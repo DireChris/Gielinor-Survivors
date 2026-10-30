@@ -34,19 +34,47 @@ jobs:
           use-dotnet: false
           include-templates: true
 
+      - name: Resolve and verify Godot executable
+        shell: pwsh
+        run: |
+          $godotInstallDir = Join-Path $env:USERPROFILE "godot"
+          $godotExecutable = Get-ChildItem -LiteralPath $godotInstallDir -Filter "Godot_v4.7.2-stable_win64.exe" -File | Select-Object -First 1
+          if ($null -eq $godotExecutable) {
+            throw "Godot 4.7.2 executable was not found in $godotInstallDir."
+          }
+
+          $godotExePath = $godotExecutable.FullName
+          Write-Host "Using Godot executable: $godotExePath"
+
+          $godotVersion = & $godotExePath --version
+          $versionExitCode = $LASTEXITCODE
+          if ($versionExitCode -ne 0) {
+            throw "Godot version check failed with exit code $versionExitCode."
+          }
+
+          $godotVersionText = ($godotVersion | Out-String).Trim()
+          Write-Host "Godot version: $godotVersionText"
+          if ($godotVersionText -notmatch "^4[.]7[.]2") {
+            throw "Expected Godot 4.7.2 stable but found $godotVersionText."
+          }
+
+          "GS_GODOT_EXE=$godotExePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Import project and validate main scene
         shell: pwsh
         run: |
           Write-Host "Importing Godot project..."
-          godot --headless --editor --path . --quit
-          if (-not $?) {
-            throw "Godot project import failed."
+          & $env:GS_GODOT_EXE --headless --editor --path . --quit
+          $importExitCode = $LASTEXITCODE
+          if ($importExitCode -ne 0) {
+            throw "Godot project import failed with exit code $importExitCode."
           }
 
           Write-Host "Launching main scene headlessly..."
-          godot --headless --path . --quit-after 5
-          if (-not $?) {
-            throw "The main scene failed to launch headlessly."
+          & $env:GS_GODOT_EXE --headless --path . --quit-after 5
+          $sceneExitCode = $LASTEXITCODE
+          if ($sceneExitCode -ne 0) {
+            throw "The main scene failed to launch headlessly (exit code $sceneExitCode)."
           }
 
       - name: Export and package Windows build
@@ -65,11 +93,11 @@ jobs:
           }
           New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
-          Write-Host "Using Godot installed by setup-godot (4.7.2 stable)."
-          Write-Host "Export command: godot --headless --path . --export-release `"Windows Desktop`" build/gielinor-survivors.exe"
-          godot --headless --verbose --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"
-          if (-not $?) {
-            throw "Godot Windows export failed."
+          Write-Host 'Export command: Godot --headless --path . --export-release "Windows Desktop" build/gielinor-survivors.exe'
+          & $env:GS_GODOT_EXE --headless --verbose --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"
+          $exportExitCode = $LASTEXITCODE
+          if ($exportExitCode -ne 0) {
+            throw "Godot Windows export failed with exit code $exportExitCode."
           }
 
           Write-Host "Build directory contents after export:"
