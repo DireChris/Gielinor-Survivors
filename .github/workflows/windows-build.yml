@@ -1,0 +1,83 @@
+name: Windows Build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Export Windows x86_64
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.7.2 and export templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+
+      - name: Verify Godot installation
+        shell: pwsh
+        run: |
+          godot --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Import project and validate main scene
+        shell: pwsh
+        run: |
+          godot --headless --editor --path . --quit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          godot --headless --path . --quit-after 5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Export Windows executable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          godot --headless --path . --export-release "Windows Desktop" "build/Gielinor Survivors.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $exe = "build/Gielinor Survivors.exe"
+          $pck = "build/Gielinor Survivors.pck"
+          if (!(Test-Path $exe)) { throw "Windows export did not produce the EXE." }
+          if (!(Test-Path $pck)) { throw "Windows export did not produce the matching PCK data file." }
+
+          Get-ChildItem build | Format-Table Name, Length
+
+      - name: Upload playable Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gielinor-Survivors-Windows
+          path: |
+            build/Gielinor Survivors.exe
+            build/Gielinor Survivors.pck
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            build/Gielinor Survivors.exe
+            build/Gielinor Survivors.pck
