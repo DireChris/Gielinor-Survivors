@@ -62,16 +62,10 @@ jobs:
           }
           New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
-          Push-Location $workspace
-          try {
-            Write-Host "Exporting Windows Desktop build..."
-            godot --headless --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"
-            if (-not $?) {
-              throw "Godot Windows export failed."
-            }
-          }
-          finally {
-            Pop-Location
+          Write-Host "Exporting Windows Desktop build..."
+          godot --headless --path $workspace --export-release "Windows Desktop" $exe
+          if (-not $?) {
+            throw "Godot Windows export failed."
           }
 
           if (!(Test-Path -LiteralPath $exe -PathType Leaf)) {
