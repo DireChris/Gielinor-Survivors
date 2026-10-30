@@ -10,25 +10,24 @@ signal profile_saved
 
 const PROFILE_PATH := "user://gielinor_survivors_profile.json"
 const SKILLS := ["Attack", "Strength", "Defence", "Hitpoints", "Slayer"]
-const SLAYER_TARGET := "Goblin"
-const SLAYER_TARGET_COUNT := 15
 
 @export var player_path: NodePath
 @export var enemy_container_path: NodePath
 @export var combat_path: NodePath
+@export var inventory_service_path: NodePath
+@export var slayer_service_path: NodePath
 
 var run_skill_xp: Dictionary = {}
 var profile_skill_xp: Dictionary = {}
-var run_inventory: Dictionary = {"coins": 0, "copper_ore": 0, "bones": 0}
 var lifetime_kills: int = 0
-var slayer_kills: int = 0
-var slayer_completed: bool = false
 var bronze_edge_unlocked: bool = false
 var weapon_damage_bonus: int = 0
 
 var _player: PlayerController
 var _enemy_container: Node3D
 var _combat: AutoCombat
+var _inventory: InventoryService
+var _slayer_contract: SlayerContractService
 
 
 func _ready() -> void:
@@ -38,13 +37,16 @@ func _ready() -> void:
 	_player = get_node_or_null(player_path) as PlayerController
 	_enemy_container = get_node_or_null(enemy_container_path) as Node3D
 	_combat = get_node_or_null(combat_path) as AutoCombat
+	_inventory = get_node_or_null(inventory_service_path) as InventoryService
+	_slayer_contract = get_node_or_null(slayer_service_path) as SlayerContractService
 
-	if _player == null or _enemy_container == null:
-		push_error("ProgressionDirector requires valid player and enemy container paths.")
+	if _player == null or _enemy_container == null or _inventory == null or _slayer_contract == null:
+		push_error("ProgressionDirector requires player, enemy container, InventoryService and SlayerContractService references.")
 		set_process(false)
 		return
 
 	_player.player_died.connect(_on_player_died)
+	_slayer_contract.contract_completed.connect(_on_slayer_contract_completed)
 	_enemy_container.child_entered_tree.connect(_on_enemy_child_entered)
 	for child in _enemy_container.get_children():
 		_connect_enemy(child)
@@ -75,24 +77,25 @@ func _on_enemy_died(enemy: EnemyController) -> void:
 	_award_xp("Defence", 2.0)
 	_award_xp("Hitpoints", 1.33)
 
-	if not slayer_completed:
-		slayer_kills += 1
-		_award_xp("Slayer", 5.0)
-		if slayer_kills >= SLAYER_TARGET_COUNT:
-			slayer_completed = true
-			run_inventory["coins"] = int(run_inventory.get("coins", 0)) + 75
-			_award_xp("Slayer", 100.0)
+	var slayer_xp := _slayer_contract.register_kill(enemy.monster_id)
+	if slayer_xp > 0:
+		_award_xp("Slayer", float(slayer_xp))
 
 	_roll_drops(enemy)
 	progression_changed.emit()
 
 
-func _roll_drops(_enemy: EnemyController) -> void:
-	run_inventory["coins"] = int(run_inventory.get("coins", 0)) + randi_range(2, 8)
-	if randf() < 0.45:
-		run_inventory["copper_ore"] = int(run_inventory.get("copper_ore", 0)) + 1
-	if randf() < 0.35:
-		run_inventory["bones"] = int(run_inventory.get("bones", 0)) + 1
+func _roll_drops(enemy: EnemyController) -> void:
+	if enemy.drop_table == null:
+		return
+	var drops := enemy.drop_table.roll_drops()
+	for item_id in drops:
+		_inventory.add_item(StringName(item_id), int(drops[item_id]))
+
+
+func _on_slayer_contract_completed(rewards: Dictionary) -> void:
+	for item_id in rewards:
+		_inventory.add_item(StringName(item_id), int(rewards[item_id]))
 
 
 func _award_xp(skill: String, amount: float) -> void:
@@ -139,12 +142,14 @@ func _xp_for_level(level: int) -> int:
 func craft_bronze_edge() -> void:
 	if bronze_edge_unlocked:
 		return
-	if int(run_inventory.get("copper_ore", 0)) < 5 or int(run_inventory.get("bones", 0)) < 3 or int(run_inventory.get("coins", 0)) < 30:
+	var material_costs := {
+		&"copper_ore": 5,
+		&"bones": 3,
+		&"coins": 30
+	}
+	if not _inventory.remove_items(material_costs):
 		return
 
-	run_inventory["copper_ore"] = int(run_inventory["copper_ore"]) - 5
-	run_inventory["bones"] = int(run_inventory["bones"]) - 3
-	run_inventory["coins"] = int(run_inventory["coins"]) - 30
 	bronze_edge_unlocked = true
 	weapon_damage_bonus += 3
 	progression_changed.emit()
@@ -155,13 +160,13 @@ func get_progression_text() -> String:
 	var strength_level := get_skill_level("Strength")
 	var defence_level := get_skill_level("Defence")
 	var hp_level := get_skill_level("Hitpoints")
-	var slayer_text := "COMPLETE" if slayer_completed else "%d/%d" % [slayer_kills, SLAYER_TARGET_COUNT]
-	return "SKILLS  ATK %d  STR %d  DEF %d  HP %d\nSLAYER  %s GOBLINS  |  %s\nLOOT  COINS %d  ORE %d  BONES %d\nBRONZE EDGE  %s  (C TO CRAFT)" % [
+	var slayer_text := _slayer_contract.get_status_text()
+	return "SKILLS  ATK %d  STR %d  DEF %d  HP %d\nSLAYER  %s\nLOOT  COINS %d  ORE %d  BONES %d\nBRONZE EDGE  %s  (C TO CRAFT)" % [
 		attack_level, strength_level, defence_level, hp_level,
-		SLAYER_TARGET, slayer_text,
-		int(run_inventory.get("coins", 0)),
-		int(run_inventory.get("copper_ore", 0)),
-		int(run_inventory.get("bones", 0)),
+		slayer_text,
+		_inventory.get_item_count(&"coins"),
+		_inventory.get_item_count(&"copper_ore"),
+		_inventory.get_item_count(&"bones"),
 		"OWNED" if bronze_edge_unlocked else "5 ORE + 3 BONES + 30 COINS"
 	]
 

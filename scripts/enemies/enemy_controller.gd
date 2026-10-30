@@ -7,6 +7,10 @@ class_name EnemyController
 signal died(enemy: EnemyController)
 signal health_changed(current_health: int, maximum_health: int)
 
+@export_category("Identity")
+@export var monster_id: StringName = &"goblin"
+@export var drop_table: DropTableData
+
 @export_category("Base Stats")
 @export_range(1, 500, 1) var base_max_health: int = 18
 @export_range(0.5, 10.0, 0.1) var base_move_speed: float = 2.0

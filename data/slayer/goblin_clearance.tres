@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SlayerContractData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/progression/slayer_contract_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+contract_id = &"goblin_clearance"
+display_name = "Goblin Clearance"
+target_monster_id = &"goblin"
+target_count = 15
+xp_per_kill = 5
+completion_bonus_xp = 100
+completion_rewards = {
+"coins": 75
+}

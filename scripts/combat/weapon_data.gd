@@ -23,4 +23,5 @@ enum TargetPolicy {
 @export var special_name: String = "Whirlwind"
 @export_range(1.0, 10.0, 0.05) var special_damage_multiplier: float = 1.75
 @export_range(1.0, 15.0, 0.1) var special_radius: float = 5.5
+@export_range(30.0, 360.0, 5.0) var special_arc_degrees: float = 150.0
 @export_range(1.0, 100.0, 1.0) var special_cost: float = 50.0

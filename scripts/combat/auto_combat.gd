@@ -50,14 +50,11 @@ func _process(delta: float) -> void:
 	var target := _select_target(weapon_data.attack_range + attack_range_bonus)
 	if target == null:
 		return
+	var attack_direction := _face_target(target, weapon_data.attack_interval)
 	var damage := weapon_data.damage + damage_bonus + run_damage_bonus
+	_spawn_directional_slash(attack_direction, 1.65, 115.0, false)
 	target.take_damage(damage)
 	_attack_cooldown = weapon_data.attack_interval / maxf(0.25, attack_speed_multiplier)
-	_player.rotation.y = atan2(
-		_player.global_position.x - target.global_position.x,
-		_player.global_position.z - target.global_position.z
-	)
-	_spawn_impact(target.global_position, 0.72)
 	attack_landed.emit(String(target.name), damage)
 
 
@@ -90,45 +87,128 @@ func _select_target(search_radius: float) -> EnemyController:
 func _activate_special() -> void:
 	if special_energy < weapon_data.special_cost:
 		return
+
+	# Lock the player onto the nearest valid target before building the sweep.
+	var lead_target := _select_target(weapon_data.special_radius)
+	if lead_target == null:
+		return
+	var special_direction := _face_target(lead_target, 0.55)
 	var radius_squared := weapon_data.special_radius * weapon_data.special_radius
+	var minimum_forward_dot := cos(deg_to_rad(weapon_data.special_arc_degrees * 0.5))
 	var targets: Array[EnemyController] = []
+
 	for child in _enemy_container.get_children():
-		if child is EnemyController:
-			var enemy := child as EnemyController
-			if enemy.alive and _player.global_position.distance_squared_to(enemy.global_position) <= radius_squared:
-				targets.append(enemy)
+		if not child is EnemyController:
+			continue
+		var enemy := child as EnemyController
+		if not enemy.alive:
+			continue
+		var offset := enemy.global_position - _player.global_position
+		offset.y = 0.0
+		var distance_squared := offset.length_squared()
+		if distance_squared > radius_squared or distance_squared < 0.0001:
+			continue
+		var direction_to_enemy := offset.normalized()
+		if direction_to_enemy.dot(special_direction) >= minimum_forward_dot:
+			targets.append(enemy)
+
 	if targets.is_empty():
 		return
+
 	special_energy -= weapon_data.special_cost
 	var damage := maxi(1, roundi(float(weapon_data.damage + damage_bonus + run_damage_bonus) * weapon_data.special_damage_multiplier))
+	_spawn_directional_slash(special_direction, minf(weapon_data.special_radius, 2.2), weapon_data.special_arc_degrees, true)
 	for enemy in targets:
 		if is_instance_valid(enemy) and enemy.alive:
 			enemy.take_damage(damage)
-	_spawn_impact(_player.global_position, weapon_data.special_radius)
 	special_activated.emit(weapon_data.special_name, targets.size())
 
 
-func _spawn_impact(world_position: Vector3, radius: float) -> void:
-	var effect := MeshInstance3D.new()
-	var ring := TorusMesh.new()
-	ring.inner_radius = radius * 0.72
-	ring.outer_radius = radius
-	effect.mesh = ring
+func _face_target(target: EnemyController, lock_duration: float) -> Vector3:
+	var direction := target.global_position - _player.global_position
+	direction.y = 0.0
+	if direction.length_squared() < 0.0001:
+		return -_player.global_basis.z.normalized()
+
+	direction = direction.normalized()
+	_player.face_direction(direction, lock_duration)
+	return direction
+
+
+func _spawn_directional_slash(
+	direction: Vector3,
+	radius: float,
+	sweep_degrees: float,
+	is_special: bool
+) -> void:
+	if direction.length_squared() < 0.0001:
+		return
+	var scene_root := get_tree().current_scene
+	if scene_root == null:
+		return
+
+	var segments := 24
+	var half_angle := deg_to_rad(clampf(sweep_degrees, 20.0, 300.0) * 0.5)
+	var inner_radius := radius * (0.70 if is_special else 0.72)
+	var vertices := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var indices := PackedInt32Array()
+
+	# The crescent is authored in local XY, then its plane is aimed down the
+	# attack direction. This keeps the slash visually aligned with combat.
+	for segment in range(segments + 1):
+		var angle := lerpf(-half_angle, half_angle, float(segment) / float(segments))
+		var direction_2d := Vector2(sin(angle), cos(angle))
+		vertices.append(Vector3(direction_2d.x * inner_radius, direction_2d.y * inner_radius, 0.0))
+		vertices.append(Vector3(direction_2d.x * radius, direction_2d.y * radius, 0.0))
+		uvs.append(Vector2(float(segment) / float(segments), 0.0))
+		uvs.append(Vector2(float(segment) / float(segments), 1.0))
+		if segment < segments:
+			var index := segment * 2
+			indices.append_array(PackedInt32Array([
+				index, index + 1, index + 2,
+				index + 1, index + 3, index + 2
+			]))
+
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX] = indices
+
+	var slash_mesh := ArrayMesh.new()
+	slash_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = Color(1.0, 0.72, 0.25, 0.9)
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.emission_enabled = true
-	material.emission = Color(1.0, 0.48, 0.12)
-	effect.material_override = material
-	get_tree().current_scene.add_child(effect)
-	effect.global_position = world_position + Vector3.UP * 0.12
-	effect.rotation.x = PI / 2.0
-	effect.scale = Vector3.ONE * 0.35
+	if is_special:
+		material.albedo_color = Color(1.0, 0.68, 0.22, 0.88)
+		material.emission = Color(1.0, 0.42, 0.08)
+	else:
+		material.albedo_color = Color(0.98, 0.85, 0.48, 0.92)
+		material.emission = Color(1.0, 0.62, 0.18)
+	slash_mesh.surface_set_material(0, material)
+
+	var effect := MeshInstance3D.new()
+	effect.mesh = slash_mesh
+	effect.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	scene_root.add_child(effect)
+	effect.global_position = _player.global_position + direction * (0.55 if not is_special else 0.85) + Vector3.UP * 1.0
+	effect.look_at(effect.global_position + direction, Vector3.UP)
+	effect.scale = Vector3(0.78, 0.78, 0.78) if is_special else Vector3(0.58, 0.58, 0.58)
+
 	var tween := effect.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(effect, "scale", Vector3.ONE, 0.22)
-	tween.tween_property(material, "albedo_color:a", 0.0, 0.35)
+	tween.tween_property(effect, "scale", Vector3.ONE, 0.14 if not is_special else 0.24)
+	tween.tween_property(material, "albedo_color", Color(
+		material.albedo_color.r,
+		material.albedo_color.g,
+		material.albedo_color.b,
+		0.0
+	), 0.20 if not is_special else 0.32)
 	tween.chain().tween_callback(effect.queue_free)
 
 

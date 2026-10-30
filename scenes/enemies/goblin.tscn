@@ -1,6 +1,7 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemies/enemy_controller.gd" id="1_enemy"]
+[ext_resource type="Resource" path="res://data/drops/goblin_drop_table.tres" id="2_drop_table"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
 radius = 0.34
@@ -26,6 +27,8 @@ roughness = 0.95
 collision_layer = 1
 collision_mask = 1
 script = ExtResource("1_enemy")
+monster_id = &"goblin"
+drop_table = ExtResource("2_drop_table")
 
 [node name="Body" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.76, 0)

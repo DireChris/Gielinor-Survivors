@@ -14,4 +14,5 @@ target_policy = 0
 special_name = "Whirlwind"
 special_damage_multiplier = 1.75
 special_radius = 5.5
+special_arc_degrees = 150.0
 special_cost = 50.0

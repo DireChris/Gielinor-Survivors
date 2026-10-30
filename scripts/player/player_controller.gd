@@ -30,6 +30,9 @@ var current_health: int = 100
 var is_dead: bool = false
 var run_speed_multiplier: float = 1.0
 
+var _combat_facing_lock_remaining: float = 0.0
+var _combat_facing_yaw: float = 0.0
+
 var _camera: Camera3D
 
 
@@ -89,13 +92,25 @@ func _physics_process(delta: float) -> void:
 			-terminal_fall_speed
 		)
 
-	if has_movement_input:
+	if _combat_facing_lock_remaining > 0.0:
+		_combat_facing_lock_remaining = maxf(0.0, _combat_facing_lock_remaining - physics_delta)
+		rotation.y = lerp_angle(rotation.y, _combat_facing_yaw, minf(turn_rate * physics_delta, 1.0))
+	elif has_movement_input:
 		var target_yaw := atan2(-move_direction.x, -move_direction.z)
 		rotation.y = lerp_angle(rotation.y, target_yaw, minf(turn_rate * physics_delta, 1.0))
 
 	# Godot 4 consumes the CharacterBody3D.velocity property directly.
 	# Do not multiply velocity by delta here.
 	move_and_slide()
+
+
+func face_direction(direction: Vector3, lock_duration: float = 0.35) -> void:
+	var flat_direction := Vector3(direction.x, 0.0, direction.z)
+	if flat_direction.length_squared() < INPUT_DEADZONE_SQUARED:
+		return
+	flat_direction = flat_direction.normalized()
+	_combat_facing_yaw = atan2(-flat_direction.x, -flat_direction.z)
+	_combat_facing_lock_remaining = maxf(_combat_facing_lock_remaining, lock_duration)
 
 
 func take_damage(amount: int) -> void:
