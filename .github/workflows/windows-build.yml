@@ -49,7 +49,7 @@ jobs:
           godot --headless --path . --quit-after 5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Export Windows executable
+      - name: Export and package Windows build
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path build | Out-Null
@@ -58,17 +58,19 @@ jobs:
 
           $exe = "build/Gielinor-Survivors.exe"
           $pck = "build/Gielinor-Survivors.pck"
+          $package = "build/Gielinor-Survivors-Windows.zip"
           if (!(Test-Path $exe)) { throw "Windows export did not produce the EXE." }
           if (!(Test-Path $pck)) { throw "Windows export did not produce the matching PCK data file." }
 
+          Compress-Archive -Path $exe, $pck -DestinationPath $package -Force
+          if (!(Test-Path $package)) { throw "Could not create the Windows build ZIP." }
           Get-ChildItem build | Format-Table Name, Length
 
       - name: Upload playable Windows build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: Gielinor-Survivors-Windows
-          path: build/
-          if-no-files-found: error
+          path: build/Gielinor-Survivors-Windows.zip
+          archive: false
           retention-days: 30
 
       - name: Publish GitHub Release
@@ -76,6 +78,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: |
-            build/Gielinor-Survivors.exe
-            build/Gielinor-Survivors.pck
+          files: build/Gielinor-Survivors-Windows.zip
