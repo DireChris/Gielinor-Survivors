@@ -2,176 +2,64 @@
 
 ## Runtime boundaries
 
-The game is split into four layers. Systems should communicate through typed signals or narrow public methods rather than reaching into unrelated nodes.
+The game is split into four layers. Systems communicate through typed signals or narrow public methods rather than reaching into unrelated nodes.
 
-### 1. Presentation
-
-Responsible for rendering and player feedback only:
-
-- `PlayerController`: reads input and moves the character.
-- `OrbitCamera`: follows and orbits the player.
-- `GameHUD`: presents run state, skill panels, hitsplats and combat log.
+### Presentation
+- `PlayerController`: movement and player Hitpoints.
+- `OrbitCamera`: third-person orbit and zoom.
+- `GameHUD`: presents run state, skills, Slayer, inventory and special energy.
 - Character/enemy scenes: visual rigs, animation and audio emitters.
 
-Presentation nodes should not decide drop rates, calculate weapon damage or award permanent XP.
+Presentation does not decide drop rates, calculate damage or award permanent XP.
 
-### 2. Run systems
+### Run systems
+- `WaveManager`: wave spawning, intermission and defeat state.
+- `AutoCombat`: weapon cadence, target selection, special energy and hit effects.
+- `ProgressionDirector`: current prototype owner for run XP, Slayer task, drops, starter crafting and profile banking. Split into dedicated Slayer, Drop, Crafting and RunSkill services as those systems expand.
+- `EnemyController`: movement, contact attacks, health and one authoritative death signal.
 
-Created for a single run and discarded when that run ends:
+### Persistent profile
+The progression director reads and writes a versioned JSON profile under Godot's `user://` directory. Run XP is banked when the player is defeated. The profile stores permanent skill XP, lifetime kills and the Bronze Edge unlock. A future `ProfileService` should own schema migrations, backups and atomic saves independently of run systems.
 
-- `RunDirector`: owns run phase and coordinates start, active play, death and results.
-- `WaveDirector`: chooses the current wave and schedules spawn groups.
-- `SpawnDirector`: turns spawn requests into enemy instances, with caps and pooling hooks.
-- `CombatDirector`: resolves attack requests, hit checks and damage events.
-- `TargetSelector`: finds eligible targets using a configurable policy.
-- `DropDirector`: rolls drops and creates world pickups.
-- `RunInventory`: holds gathered materials and temporary equipment.
-- `SlayerContract`: tracks task progress and rewards.
-- `CraftingDirector`: validates recipes and applies equipment upgrades.
-- `RunSkillState`: owns temporary skill XP, level choices, active prayers and run-only unlocks.
-
-### 3. Persistent profile
-
-Survives between runs and is loaded at boot:
-
-- `ProfileService`: loads, validates, migrates and saves the profile.
-- `MetaProgression`: converts run results into permanent skill XP and unlocks.
-- `UnlockCatalog`: defines permanent unlocks and prerequisites.
-- `SettingsService`: stores input, audio and display settings.
-
-A run must not directly edit persistent profile files. At death or extraction, it produces a `RunResult`; the meta-progression service applies that result and then the profile service saves it.
-
-### 4. Data definitions
-
-Balance data lives in custom Godot `Resource` assets (`.tres`) rather than manager code. Scenes contain presentation and composition; resources contain tunable values and IDs.
-
-Planned resource types:
-
-| Resource | Key fields |
-|---|---|
-| `WeaponData` | stable ID, display name, attack style, range, cadence, target policy, damage, projectile scene, special definition |
-| `MonsterData` | stable ID, display name, max HP, movement speed, contact damage, XP value, tags, drop table, scene |
-| `SkillDefinition` | stable ID, skill name, XP curve, unlock tiers, icon and description |
-| `UpgradeDefinition` | stable ID, eligible skills, prerequisites, rarity, effects and level cap |
-| `WaveDefinition` | spawn groups, threat budget, intermission duration, boss rules |
-| `SlayerTaskDefinition` | eligible monster tags, target count range, reward table and difficulty band |
-| `RecipeDefinition` | station type, input quantities, skill requirement, output item and upgrade effect |
-| `DropTable` | weighted entries, quantity ranges, rarity modifiers |
-
-Use stable string IDs in save data. Never save a node path, scene-tree path or array index as the permanent identity of an unlock or item.
+### Data definitions
+Weapon balance is already held in `WeaponData` resources. Future monster, skill, drop-table, recipe and Slayer definitions should use custom Godot Resources with stable string IDs. Save data must never use scene paths or array indices as permanent identities.
 
 ## Combat event flow
+1. AutoCombat selects a valid enemy inside weapon range.
+2. WeaponData supplies damage and cadence; the enemy receives one damage call.
+3. EnemyController emits one death signal before freeing itself.
+4. WaveManager reduces the active enemy count; AutoCombat awards special energy; ProgressionDirector awards run XP and rolls drops.
+5. Slayer progress listens to the same authoritative death event.
+6. At enough special energy, Q spends the configured cost once and applies area damage.
 
-1. The equipped weapon requests an attack when its cooldown is ready.
-2. `TargetSelector` finds a live, valid target within the weapon's range and line-of-sight rules.
-3. The weapon execution strategy resolves melee, projectile or spell delivery.
-4. `CombatDirector` applies hit chance, damage modifiers, defence, Prayer effects and special-attack modifiers in a defined order.
-5. The target emits a `damaged` event; presentation displays the hitsplat and combat-log entry.
-6. On death, the enemy emits one death event. XP, drops, Slayer progress, kill counters and special-energy gain subscribe to that event.
+## Progression and save format
 
-The enemy must have a single authoritative death transition so damage-over-time, projectiles and simultaneous hits cannot award duplicate XP or drops.
+Run XP is temporary during the attempt. On defeat, the current prototype banks it into the local profile. Skill levels use the familiar OSRS cumulative XP threshold formula and are capped at 99.
 
-## Run-state lifecycle
-
-`HUB -> STARTING -> ACTIVE <-> INTERMISSION -> BOSS -> ACTIVE -> PLAYER_DEFEATED -> RESULTS -> HUB`
-
-The run director is the only owner of this state. Systems can request transitions (for example, the wave director requests an intermission), but the run director validates and applies them.
-
-## Progression separation
-
-There are two intentionally separate progress tracks:
-
-- **Run skills:** temporary XP and level choices reset when the run ends. These directly affect the current character's combat and survival capabilities.
-- **Permanent skills:** persistent XP earned from the run result. These unlock starting bonuses, crafting tiers, skill-specific options and new content. They do not silently overwrite current-run choices.
-
-Prayer uses a separate prayer-point pool. Active prayers are explicit toggles with drain rates and mutually-exclusive groups. Rare drops and shrines restore points; prayer should not be implemented as a free permanent stat bonus.
-
-## Performance strategy
-
-Start with straightforward nodes and profile before optimizing. When enemy counts justify it:
-
-- pool frequently spawned enemies, projectiles, XP drops and hitsplat effects;
-- stagger enemy target updates instead of recalculating every enemy every frame;
-- use squared distance checks for target filtering;
-- keep physics collision layers narrow;
-- use MultiMesh for purely decorative repeated scenery, not independently interactive enemies;
-- centralize spawn caps and projectile caps in run configuration.
-
-## Save format
-
-Use a versioned JSON profile for the first persistent implementation:
+Current profile schema:
 
 ```json
 {
   "schema_version": 1,
-  "profile_id": "local-profile",
   "permanent_skill_xp": {},
-  "unlocks": [],
-  "settings": {}
+  "lifetime_kills": 0,
+  "bronze_edge_unlocked": false
 }
 ```
 
-Saving should be atomic: write a temporary file, validate it, then replace the previous profile. On load, migrate older schema versions before exposing the profile to gameplay. Keep a backup before applying a migration.
+The profile writer writes a temporary file and then renames it into place. If a profile cannot be parsed or has an unsupported schema version, the game warns and starts with a fresh profile rather than attempting an unsafe migration.
 
-## Phase gates
+## Current progression slice
+- Slayer: one 15-Goblin contract; completion grants bonus Slayer XP and coins.
+- Skills: Attack, Strength, Defence, Hitpoints and Slayer earn run XP from kills.
+- Drops: goblins can drop coins, copper ore and bones.
+- Crafting: one Bronze Edge recipe consumes 5 ore, 3 bones and 30 coins, then grants a weapon damage bonus.
+- Meta: permanent skill XP, lifetime kills and the crafted unlock are stored between launches.
+- Combat feedback: damage numbers plus expanding gold impact rings for regular attacks and specials.
 
-### Phase 1 — controller and camera
-
-- Player moves in camera-relative directions.
-- Sprint is optional and independent of camera yaw.
-- Middle-mouse drag orbits horizontally and vertically.
-- Wheel zoom is clamped; the SpringArm prevents camera clipping.
-- Player remains grounded on the test floor.
-
-### Phase 2 — combat and special attacks
-
-- Weapon data drives cadence, range, style and attack delivery.
-- Target selection is deterministic and configurable.
-- Auto-attacks stop cleanly when no target is valid.
-- Damage and death events are authoritative and cannot double-award rewards.
-- Special energy is bounded from 0 to 100 and weapon specials spend it once.
-
-### Phase 3 — waves and Slayer
-
-- Wave definitions can be added without editing the wave director.
-- Spawn budgets and enemy caps prevent uncontrolled growth.
-- Slayer task progress is based on monster tags and the authoritative death event.
-- Boss waves have explicit telegraphs and recovery windows.
-
-### Phase 4 — skills, drops and crafting
-
-- Skill curves and upgrade effects are data-driven.
-- XP drops are pooled and can be magnetized/collected reliably.
-- Crafting validates materials, station, skill and recipe before consuming anything.
-- Prayer drain and restoration are testable independently.
-
-### Phase 5 — results, UI and meta-progression
-
-- Death produces a complete `RunResult` exactly once.
-- Permanent XP calculation is deterministic and inspectable.
-- Save/load survives restarts and schema migration.
-- UI is a presentation layer over run/profile state, not the source of truth.
-
-
-## Phase 2 implementation — first combat loop
-
-The current playable slice adds the first version of the run systems while preserving the Phase 1 controller and orbit camera.
-
-- `WeaponData` is a Resource asset. The Bronze Sword definition supplies attack style, damage, cadence, range, target policy and special-attack tuning.
-- `AutoCombat` owns attack cadence, target selection, special energy and the Q special input. It subscribes to enemy death signals to award special energy.
-- `EnemyController` provides reusable chasing, contact attacks, wave-scaled Hitpoints and a single authoritative death signal.
-- `WaveManager` owns the preparation, spawning, clearing, intermission and defeated states. It limits simultaneously active enemies and scales goblin health, speed and damage by wave.
-- `PlayerController` owns player Hitpoints and emits one death transition. The HUD reads state from these gameplay systems and does not own it.
-- The Goblin scene is a low-poly placeholder and should be replaced by a rigged monster scene without changing the wave or combat APIs.
-
-### Combat event flow
-
-1. AutoCombat selects an eligible enemy within the weapon range using the configured target policy.
-2. WeaponData supplies the damage and cadence; EnemyController receives one damage call.
-3. EnemyController creates a floating damage number and, at zero Hitpoints, emits one death signal before freeing itself.
-4. WaveManager reduces its active count. AutoCombat awards special energy. Both listen to the same authoritative death event.
-5. At 50 special energy, Q activates the Bronze Sword's Whirlwind and damages eligible enemies within its area radius.
-
-### Current prototype limits
-
-The current Bronze Sword is a melee-only starter weapon. There are no ranged projectiles, magic autocasts, equipment inventory, Slayer contracts, XP drops, boss phases or persistent run profile yet. Those remain the next additions rather than being represented by non-functional UI placeholders.
+## Deliberate next steps
+- Add a level-up choice flow with upgrade definitions and a pause/selection state.
+- Replace placeholder geometry with rigged player and monster models, animation trees and audio.
+- Separate Slayer contracts, drop tables, inventory, crafting recipes, profile service and meta unlock catalogue into independent resources/services.
+- Add multiple monsters, weapon styles, projectile/magic delivery, Prayer, gathering nodes, bosses and a full run-results screen.
+- Add automated gameplay tests for kill rewards, duplicate death prevention, recipe validation and profile migration.

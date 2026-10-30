@@ -2,7 +2,7 @@
 
 A 3D wave-survival rogue-lite inspired by the atmosphere, monsters, equipment and progression of Old School RuneScape.
 
-> **Current status:** Phase 2 combat prototype — a RuneLite-inspired free-orbit camera, player movement and a first playable loop with goblin waves, automatic melee attacks, hitsplats, Hitpoints and a special attack.
+> **Current status:** Early playable prototype — third-person orbit camera, movement, automatic melee combat, goblin waves, special attacks, Slayer contracts, skill XP, loot, crafting and a first persistent profile.
 
 ## Engine
 
@@ -23,7 +23,7 @@ Every push to `main` and pull request targeting `main` runs the Windows export w
 
 The workflow validates the Godot project headlessly, exports the Windows Desktop preset, verifies both exported files, creates a ZIP from the build folder and checks that the ZIP contains the EXE and PCK before uploading it.
 
-Push a version tag such as `v0.2.0` to create a GitHub Release automatically. The release attaches `gielinor-survivors-windows.zip` directly.
+Push a version tag such as `v0.3.0` to create a GitHub Release automatically. The release attaches `gielinor-survivors-windows.zip` directly.
 
 ## Open the project in Godot
 
@@ -32,8 +32,6 @@ Push a version tag such as `v0.2.0` to create a GitHub Release automatically. Th
 3. Select this repository's `project.godot` file.
 4. Open the project and press **F5** to run it.
 
-The project is designed for desktop keyboard and mouse.
-
 ## Controls
 
 | Input | Action |
@@ -41,21 +39,25 @@ The project is designed for desktop keyboard and mouse.
 | W / A / S / D | Move relative to camera direction |
 | Arrow keys | Alternative movement |
 | Left Shift | Sprint |
-| Hold middle mouse + drag | Orbit camera (yaw and pitch) |
-| Mouse wheel | Zoom in / out |
-| Q | Special attack (when special energy is available) |
+| Hold middle mouse + drag | Orbit camera |
+| Mouse wheel | Zoom |
+| Q | Weapon special attack |
+| C | Craft the Bronze Edge upgrade when materials are available |
 
-The player automatically attacks nearby enemies using the equipped weapon. The first weapon is a Bronze Sword with a Whirlwind area special.
+## Current playable systems
 
-## Current combat loop
+- Goblins spawn in escalating waves and pursue the player.
+- The Bronze Sword automatically attacks nearby enemies; Q triggers Whirlwind when enough special energy is available.
+- Weapon hits and specials create expanding impact rings; damage numbers appear above enemies.
+- A Slayer contract tracks 15 goblin kills and awards bonus Slayer XP and coins.
+- Attack, Strength, Defence, Hitpoints and Slayer gain run XP from kills. OSRS-style level thresholds are used.
+- Goblins can drop coins, copper ore and bones.
+- Crafting the Bronze Edge costs 5 copper ore, 3 bones and 30 coins; it adds weapon damage for the current profile.
+- On player defeat, run skill XP is banked into a versioned local profile at `user://gielinor_survivors_profile.json`. Permanent XP, lifetime kills and the crafted weapon unlock persist between launches.
 
-- The first wave begins after a short preparation countdown.
-- Goblins spawn around the arena and chase the player.
-- The Bronze Sword automatically attacks the nearest goblin in melee range.
-- Damage numbers appear above enemies; defeated enemies charge special energy.
-- Press **Q** with at least 50% special energy to use Whirlwind against nearby enemies.
-- Goblin health, movement speed and contact damage scale as waves progress.
-- Player Hitpoints are shown in the HUD. Reaching zero ends the run.
+## Important prototype limits
+
+This is a systems foundation, not a finished game. The character and goblin are still placeholder geometry; there are no rigged attack animations, ranged weapons, magic autocasts, full equipment/inventory interface, multiple Slayer task types, boss encounters, Prayer system, gathering stations, recipe catalogue, upgrade-choice screen or complete meta-progression tree yet. The first craft is a single starter upgrade, and the current profile stores progression rather than a full run save.
 
 ## Build locally
 
@@ -68,56 +70,28 @@ godot --headless --path . --export-release "Windows Desktop" "build/gielinor-sur
 Compress-Archive -Path "build/*" -DestinationPath "gielinor-survivors-windows.zip" -CompressionLevel Optimal -Force
 ```
 
-The export preset writes `build/gielinor-survivors.exe`; Godot creates the matching `build/gielinor-survivors.pck`.
-
 ## Project structure
 
 ```text
 res://
-├── .github/workflows/
-│   └── build.yml
+├── .github/workflows/build.yml
 ├── assets/
-│   ├── audio/
-│   ├── materials/
-│   └── models/
-├── data/
-│   ├── monsters/
-│   ├── skills/
-│   └── weapons/
-│       └── bronze_sword.tres
+├── data/weapons/bronze_sword.tres
 ├── scenes/
-│   ├── enemies/
-│   │   └── goblin.tscn
-│   ├── player/
+│   ├── enemies/goblin.tscn
 │   └── main.tscn
-├── scripts/
-│   ├── combat/
-│   │   ├── auto_combat.gd
-│   │   └── weapon_data.gd
-│   ├── enemies/
-│   │   └── enemy_controller.gd
-│   ├── player/
-│   │   ├── orbit_camera.gd
-│   │   └── player_controller.gd
-│   ├── ui/
-│   │   └── game_hud.gd
-│   └── waves/
-│       └── wave_manager.gd
-├── export_presets.cfg
-└── project.godot
+└── scripts/
+    ├── combat/
+    ├── enemies/
+    ├── player/
+    ├── progression/progression_director.gd
+    ├── ui/
+    └── waves/
 ```
 
-## Planned phases
+## Architecture
 
-1. **Player controller and camera** — movement, orbit, zoom and ground collision. *(Complete foundation.)*
-2. **Combat and special attacks** — target selection, data-driven weapon definitions, automatic melee attacks, hitsplats, Hitpoints, special energy and the first area special. *(Current prototype.)*
-3. **Waves and Slayer tasks** — wave scaling is in place; next comes Slayer contracts, monster variety, bosses and task rewards.
-4. **Skills, drops and crafting** — XP orbs, skill choices, Prayer, gathering nodes, crafting stations and equipment progression.
-5. **Death, UI and meta-progression** — run summary, persistent skill XP, unlock tree, full OSRS-inspired interface and audio.
-
-## Architecture direction
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for subsystem ownership, event flow, save format, performance strategy and phase acceptance criteria. Weapon, monster, skill, drop-table and wave definitions are being separated from runtime managers. Godot custom `Resource` assets (`.tres`) are the preferred format for tunable gameplay data. Save data will be versioned before permanent progression is introduced.
+Gameplay ownership is split between presentation, run systems, persistent profile and data definitions. The progression director currently bridges run XP, Slayer, drops, a starter recipe and profile persistence; future work should split those into dedicated services as their scope grows. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Asset and IP note
 

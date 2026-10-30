@@ -1,8 +1,7 @@
 extends Node
 class_name AutoCombat
 
-## Automatically attacks the nearest eligible enemy using the equipped
-## WeaponData resource. Q spends special energy on a small area attack.
+## Automatic weapon combat with target selection, special energy and visual feedback.
 
 signal attack_landed(target_name: String, damage: int)
 signal special_activated(special_name: String, targets_hit: int)
@@ -11,13 +10,12 @@ signal special_activated(special_name: String, targets_hit: int)
 @export var player_path: NodePath
 @export var enemy_container_path: NodePath
 @export var weapon_data: WeaponData
-
 @export_category("Special Energy")
 @export_range(0.0, 10.0, 0.1) var passive_energy_regen: float = 1.25
 @export_range(0.0, 50.0, 1.0) var energy_per_kill: float = 18.0
 
 var special_energy: float = 0.0
-
+var damage_bonus: int = 0
 var _player: PlayerController
 var _enemy_container: Node3D
 var _attack_cooldown: float = 0.0
@@ -26,25 +24,12 @@ var _attack_cooldown: float = 0.0
 func _ready() -> void:
 	_player = get_node_or_null(player_path) as PlayerController
 	_enemy_container = get_node_or_null(enemy_container_path) as Node3D
-
-	if _player == null:
-		push_error("AutoCombat: player_path must point to a PlayerController.")
+	if _player == null or _enemy_container == null or weapon_data == null:
+		push_error("AutoCombat requires player, enemy container and WeaponData references.")
 		set_process(false)
 		return
-
-	if _enemy_container == null:
-		push_error("AutoCombat: enemy_container_path must point to a Node3D.")
-		set_process(false)
-		return
-
-	if weapon_data == null:
-		push_error("AutoCombat: weapon_data has not been assigned.")
-		set_process(false)
-		return
-
 	_register_special_input()
 	_enemy_container.child_entered_tree.connect(_on_enemy_child_entered)
-
 	for child in _enemy_container.get_children():
 		_connect_enemy(child)
 
@@ -52,91 +37,95 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not is_instance_valid(_player) or _player.is_dead:
 		return
-
 	special_energy = minf(100.0, special_energy + passive_energy_regen * delta)
-
 	if Input.is_action_just_pressed("special_attack"):
 		_activate_special()
-
 	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
 	if _attack_cooldown > 0.0:
 		return
-
 	var target := _select_target(weapon_data.attack_range)
 	if target == null:
 		return
-
-	target.take_damage(weapon_data.damage)
+	var damage := weapon_data.damage + damage_bonus
+	target.take_damage(damage)
 	_attack_cooldown = weapon_data.attack_interval
-	attack_landed.emit(String(target.name), weapon_data.damage)
+	_player.rotation.y = atan2(
+		_player.global_position.x - target.global_position.x,
+		_player.global_position.z - target.global_position.z
+	)
+	_spawn_impact(target.global_position, 0.72)
+	attack_landed.emit(String(target.name), damage)
 
 
 func _select_target(search_radius: float) -> EnemyController:
-	var search_radius_squared := search_radius * search_radius
+	var radius_squared := search_radius * search_radius
 	var selected: EnemyController
-	var shortest_distance_squared := INF
+	var best_distance := INF
 	var lowest_health_ratio := INF
-
 	for child in _enemy_container.get_children():
 		if not child is EnemyController:
 			continue
-
 		var enemy := child as EnemyController
 		if not enemy.alive:
 			continue
-
 		var distance_squared := _player.global_position.distance_squared_to(enemy.global_position)
-		if distance_squared > search_radius_squared:
+		if distance_squared > radius_squared:
 			continue
-
 		if weapon_data.target_policy == WeaponData.TargetPolicy.LOWEST_HEALTH:
-			var health_ratio := float(enemy.current_health) / maxf(1.0, float(enemy.max_health))
-			if health_ratio < lowest_health_ratio or (
-				is_equal_approx(health_ratio, lowest_health_ratio)
-				and distance_squared < shortest_distance_squared
-			):
+			var ratio := float(enemy.current_health) / maxf(1.0, float(enemy.max_health))
+			if ratio < lowest_health_ratio or (is_equal_approx(ratio, lowest_health_ratio) and distance_squared < best_distance):
 				selected = enemy
-				lowest_health_ratio = health_ratio
-				shortest_distance_squared = distance_squared
-		elif distance_squared < shortest_distance_squared:
+				lowest_health_ratio = ratio
+				best_distance = distance_squared
+		elif distance_squared < best_distance:
 			selected = enemy
-			shortest_distance_squared = distance_squared
-
+			best_distance = distance_squared
 	return selected
 
 
 func _activate_special() -> void:
 	if special_energy < weapon_data.special_cost:
 		return
-
 	var radius_squared := weapon_data.special_radius * weapon_data.special_radius
 	var targets: Array[EnemyController] = []
-
 	for child in _enemy_container.get_children():
-		if not child is EnemyController:
-			continue
-
-		var enemy := child as EnemyController
-		if not enemy.alive:
-			continue
-
-		if _player.global_position.distance_squared_to(enemy.global_position) <= radius_squared:
-			targets.append(enemy)
-
+		if child is EnemyController:
+			var enemy := child as EnemyController
+			if enemy.alive and _player.global_position.distance_squared_to(enemy.global_position) <= radius_squared:
+				targets.append(enemy)
 	if targets.is_empty():
 		return
-
 	special_energy -= weapon_data.special_cost
-	var special_damage := maxi(
-		1,
-		roundi(float(weapon_data.damage) * weapon_data.special_damage_multiplier)
-	)
-
+	var damage := maxi(1, roundi(float(weapon_data.damage + damage_bonus) * weapon_data.special_damage_multiplier))
 	for enemy in targets:
 		if is_instance_valid(enemy) and enemy.alive:
-			enemy.take_damage(special_damage)
-
+			enemy.take_damage(damage)
+	_spawn_impact(_player.global_position, weapon_data.special_radius)
 	special_activated.emit(weapon_data.special_name, targets.size())
+
+
+func _spawn_impact(world_position: Vector3, radius: float) -> void:
+	var effect := MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = radius * 0.72
+	ring.outer_radius = radius
+	effect.mesh = ring
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(1.0, 0.72, 0.25, 0.9)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.emission_enabled = true
+	material.emission = Color(1.0, 0.48, 0.12)
+	effect.material_override = material
+	get_tree().current_scene.add_child(effect)
+	effect.global_position = world_position + Vector3.UP * 0.12
+	effect.rotation.x = PI / 2.0
+	effect.scale = Vector3.ONE * 0.35
+	var tween := effect.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(effect, "scale", Vector3.ONE, 0.22)
+	tween.tween_property(material, "albedo_color:a", 0.0, 0.35)
+	tween.chain().tween_callback(effect.queue_free)
 
 
 func _on_enemy_child_entered(child: Node) -> void:
@@ -144,12 +133,10 @@ func _on_enemy_child_entered(child: Node) -> void:
 
 
 func _connect_enemy(child: Node) -> void:
-	if not child is EnemyController:
-		return
-
-	var enemy := child as EnemyController
-	if not enemy.died.is_connected(_on_enemy_died):
-		enemy.died.connect(_on_enemy_died)
+	if child is EnemyController:
+		var enemy := child as EnemyController
+		if not enemy.died.is_connected(_on_enemy_died):
+			enemy.died.connect(_on_enemy_died)
 
 
 func _on_enemy_died(_enemy: EnemyController) -> void:
@@ -157,14 +144,11 @@ func _on_enemy_died(_enemy: EnemyController) -> void:
 
 
 func _register_special_input() -> void:
-	var action_name: StringName = &"special_attack"
-	if not InputMap.has_action(action_name):
-		InputMap.add_action(action_name)
-
-	for existing_event in InputMap.action_get_events(action_name):
-		if existing_event is InputEventKey and existing_event.physical_keycode == KEY_Q:
+	if not InputMap.has_action(&"special_attack"):
+		InputMap.add_action(&"special_attack")
+	for existing in InputMap.action_get_events(&"special_attack"):
+		if existing is InputEventKey and existing.physical_keycode == KEY_Q:
 			return
-
-	var key_event := InputEventKey.new()
-	key_event.physical_keycode = KEY_Q
-	InputMap.action_add_event(action_name, key_event)
+	var key := InputEventKey.new()
+	key.physical_keycode = KEY_Q
+	InputMap.action_add_event(&"special_attack", key)
