@@ -39,16 +39,14 @@ jobs:
         run: |
           Write-Host "Importing Godot project..."
           godot --headless --editor --path . --quit
-          $importExitCode = $LASTEXITCODE
-          if ($importExitCode -ne 0) {
-            throw "Godot project import failed with exit code $importExitCode."
+          if (-not $?) {
+            throw "Godot project import failed."
           }
 
           Write-Host "Launching main scene headlessly..."
           godot --headless --path . --quit-after 5
-          $sceneExitCode = $LASTEXITCODE
-          if ($sceneExitCode -ne 0) {
-            throw "The main scene failed to launch headlessly (exit code $sceneExitCode)."
+          if (-not $?) {
+            throw "The main scene failed to launch headlessly."
           }
 
       - name: Export and package Windows build
@@ -70,9 +68,8 @@ jobs:
           Write-Host "Using Godot installed by setup-godot (4.7.2 stable)."
           Write-Host "Export command: godot --headless --path . --export-release `"Windows Desktop`" build/gielinor-survivors.exe"
           godot --headless --verbose --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"
-          $exportExitCode = $LASTEXITCODE
-          if ($exportExitCode -ne 0) {
-            throw "Godot Windows export failed with exit code $exportExitCode."
+          if (-not $?) {
+            throw "Godot Windows export failed."
           }
 
           Write-Host "Build directory contents after export:"
