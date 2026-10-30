@@ -77,6 +77,15 @@ jobs:
             throw "Godot project import failed with exit code $($importProcess.ExitCode)."
           }
 
+          foreach ($logPath in @($importStdout, $importStderr)) {
+            if (Test-Path -LiteralPath $logPath) {
+              $logText = Get-Content -LiteralPath $logPath -Raw
+              if ($logText -match '(?im)(SCRIPT ERROR:|ERROR: Failed to load script|Parse Error:|ERROR: Failed to load resource)') {
+                throw "Godot reported a script or resource error during project import. See $logPath."
+              }
+            }
+          }
+
           $sceneStdout = Join-Path $env:RUNNER_TEMP "godot-scene.stdout.log"
           $sceneStderr = Join-Path $env:RUNNER_TEMP "godot-scene.stderr.log"
           Write-Host "Launching main scene headlessly..."
@@ -85,6 +94,15 @@ jobs:
           if (Test-Path -LiteralPath $sceneStderr) { Get-Content -LiteralPath $sceneStderr | ForEach-Object { Write-Host $_ } }
           if ($sceneProcess.ExitCode -ne 0) {
             throw "The main scene failed to launch headlessly (exit code $($sceneProcess.ExitCode))."
+          }
+
+          foreach ($logPath in @($sceneStdout, $sceneStderr)) {
+            if (Test-Path -LiteralPath $logPath) {
+              $logText = Get-Content -LiteralPath $logPath -Raw
+              if ($logText -match '(?im)(SCRIPT ERROR:|ERROR: Failed to load script|Parse Error:|ERROR: Failed to load resource)') {
+                throw "Godot reported a script or resource error while launching the main scene. See $logPath."
+              }
+            }
           }
 
       - name: Export and package Windows build
@@ -154,7 +172,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gielinor-survivors-windows
-          path: gielinor-survivors-windows.zip
+          # Upload the exported files directly. GitHub creates the download ZIP,
+          # so uploading our own ZIP here would create a ZIP inside a ZIP.
+          path: build/*
           if-no-files-found: error
           retention-days: 30
 
