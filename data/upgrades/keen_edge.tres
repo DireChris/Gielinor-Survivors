@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RunUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/progression/run_upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+upgrade_id = &"keen_edge"
+display_name = "Keen Edge"
+description = "+1 damage to normal and special attacks."
+effect_type = &"damage"
+max_rank = 5
+effect_per_rank = 1

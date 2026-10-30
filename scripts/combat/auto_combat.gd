@@ -16,6 +16,10 @@ signal special_activated(special_name: String, targets_hit: int)
 
 var special_energy: float = 0.0
 var damage_bonus: int = 0
+var run_damage_bonus: int = 0
+var attack_speed_multiplier: float = 1.0
+var special_energy_gain_multiplier: float = 1.0
+var attack_range_bonus: float = 0.0
 var _player: PlayerController
 var _enemy_container: Node3D
 var _attack_cooldown: float = 0.0
@@ -37,18 +41,18 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not is_instance_valid(_player) or _player.is_dead:
 		return
-	special_energy = minf(100.0, special_energy + passive_energy_regen * delta)
+	special_energy = minf(100.0, special_energy + passive_energy_regen * special_energy_gain_multiplier * delta)
 	if Input.is_action_just_pressed("special_attack"):
 		_activate_special()
 	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
 	if _attack_cooldown > 0.0:
 		return
-	var target := _select_target(weapon_data.attack_range)
+	var target := _select_target(weapon_data.attack_range + attack_range_bonus)
 	if target == null:
 		return
-	var damage := weapon_data.damage + damage_bonus
+	var damage := weapon_data.damage + damage_bonus + run_damage_bonus
 	target.take_damage(damage)
-	_attack_cooldown = weapon_data.attack_interval
+	_attack_cooldown = weapon_data.attack_interval / maxf(0.25, attack_speed_multiplier)
 	_player.rotation.y = atan2(
 		_player.global_position.x - target.global_position.x,
 		_player.global_position.z - target.global_position.z
@@ -96,7 +100,7 @@ func _activate_special() -> void:
 	if targets.is_empty():
 		return
 	special_energy -= weapon_data.special_cost
-	var damage := maxi(1, roundi(float(weapon_data.damage + damage_bonus) * weapon_data.special_damage_multiplier))
+	var damage := maxi(1, roundi(float(weapon_data.damage + damage_bonus + run_damage_bonus) * weapon_data.special_damage_multiplier))
 	for enemy in targets:
 		if is_instance_valid(enemy) and enemy.alive:
 			enemy.take_damage(damage)
@@ -140,7 +144,7 @@ func _connect_enemy(child: Node) -> void:
 
 
 func _on_enemy_died(_enemy: EnemyController) -> void:
-	special_energy = minf(100.0, special_energy + energy_per_kill)
+	special_energy = minf(100.0, special_energy + energy_per_kill * special_energy_gain_multiplier)
 
 
 func _register_special_input() -> void:

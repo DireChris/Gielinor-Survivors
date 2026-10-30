@@ -7,12 +7,14 @@ extends CanvasLayer
 @export var wave_manager_path: NodePath
 @export var combat_path: NodePath
 @export var progression_path: NodePath
+@export var upgrade_director_path: NodePath
 
 var _player: PlayerController
 var _camera_rig: Node3D
 var _wave_manager: WaveManager
 var _combat: AutoCombat
 var _progression: ProgressionDirector
+var _upgrade_director: RunUpgradeDirector
 var _health_label: Label
 var _wave_label: Label
 var _special_label: Label
@@ -20,6 +22,7 @@ var _special_bar: ProgressBar
 var _status_label: Label
 var _camera_label: Label
 var _progression_label: Label
+var _upgrade_label: Label
 
 
 func _ready() -> void:
@@ -28,6 +31,7 @@ func _ready() -> void:
 	_wave_manager = get_node_or_null(wave_manager_path) as WaveManager
 	_combat = get_node_or_null(combat_path) as AutoCombat
 	_progression = get_node_or_null(progression_path) as ProgressionDirector
+	_upgrade_director = get_node_or_null(upgrade_director_path) as RunUpgradeDirector
 	_build_hud()
 
 
@@ -48,6 +52,8 @@ func _process(_delta: float) -> void:
 		_progression_label.text = _progression.get_progression_text()
 		if is_instance_valid(_combat):
 			_combat.damage_bonus = _progression.weapon_damage_bonus
+	if is_instance_valid(_upgrade_director):
+		_upgrade_label.text = _upgrade_director.get_upgrade_summary_text()
 	if is_instance_valid(_camera_rig):
 		var arm := _camera_rig.get_node_or_null("YawPivot/PitchPivot/SpringArm3D") as SpringArm3D
 		if arm != null:
@@ -102,6 +108,8 @@ func _build_hud() -> void:
 	stack.add_child(HSeparator.new())
 	_progression_label = _add_label(stack, "SKILLS  ATK 1  STR 1  DEF 1  HP 1", Color(0.78, 0.83, 0.68), 10)
 	_progression_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_upgrade_label = _add_label(stack, "UPGRADES  NONE YET", Color(0.83, 0.72, 0.48), 10)
+	_upgrade_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status_label = _add_label(stack, "", Color(0.71, 0.82, 0.67), 10)
 	_camera_label = _add_label(stack, "", Color(0.70, 0.70, 0.68), 9)
 

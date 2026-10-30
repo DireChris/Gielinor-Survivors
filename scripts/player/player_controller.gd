@@ -28,6 +28,7 @@ const INPUT_DEADZONE_SQUARED: float = 0.001
 
 var current_health: int = 100
 var is_dead: bool = false
+var run_speed_multiplier: float = 1.0
 
 var _camera: Camera3D
 
@@ -61,8 +62,8 @@ func _physics_process(delta: float) -> void:
 	)
 
 	var move_direction := _get_camera_relative_direction(input_vector)
-	var target_speed := sprint_speed if Input.is_action_pressed("sprint") else walk_speed
-	var max_horizontal_speed := maxf(walk_speed, sprint_speed)
+	var target_speed := (sprint_speed if Input.is_action_pressed("sprint") else walk_speed) * run_speed_multiplier
+	var max_horizontal_speed := maxf(walk_speed, sprint_speed) * run_speed_multiplier
 	var target_horizontal_velocity := move_direction * target_speed
 	var has_movement_input := move_direction.length_squared() > INPUT_DEADZONE_SQUARED
 	var rate := acceleration if has_movement_input else deceleration

@@ -7,7 +7,8 @@ The game is split into four layers. Systems communicate through typed signals or
 ### Presentation
 - `PlayerController`: movement and player Hitpoints.
 - `OrbitCamera`: third-person orbit and zoom.
-- `GameHUD`: presents run state, skills, Slayer, inventory and special energy.
+- `GameHUD`: presents run state, skills, Slayer, inventory, upgrades and special energy.
+- `LevelUpChoiceUI`: pause-safe choice overlay; it renders offers and forwards the selected stable upgrade ID.
 - Character/enemy scenes: visual rigs, animation and audio emitters.
 
 Presentation does not decide drop rates, calculate damage or award permanent XP.
@@ -15,7 +16,8 @@ Presentation does not decide drop rates, calculate damage or award permanent XP.
 ### Run systems
 - `WaveManager`: wave spawning, intermission and defeat state.
 - `AutoCombat`: weapon cadence, target selection, special energy and hit effects.
-- `ProgressionDirector`: current prototype owner for run XP, Slayer task, drops, starter crafting and profile banking. Split into dedicated Slayer, Drop, Crafting and RunSkill services as those systems expand.
+- `ProgressionDirector`: current prototype owner for run XP, Slayer task, drops, starter crafting and profile banking. Emits one level-up event per XP threshold crossed.
+- `RunUpgradeDirector`: queues skill level-ups, pauses the tree, offers up to three eligible run upgrades, applies the selected effect and resumes play. Upgrade definitions are Resources; ranks are run-only.
 - `EnemyController`: movement, contact attacks, health and one authoritative death signal.
 
 ### Persistent profile
@@ -56,9 +58,9 @@ The profile writer writes a temporary file and then renames it into place. If a 
 - Crafting: one Bronze Edge recipe consumes 5 ore, 3 bones and 30 coins, then grants a weapon damage bonus.
 - Meta: permanent skill XP, lifetime kills and the crafted unlock are stored between launches.
 - Combat feedback: damage numbers plus expanding gold impact rings for regular attacks and specials.
+- Level-up choices: each skill level gained offers one of up to three upgrades. Choices pause the world; selecting one resumes the run. Upgrades improve damage, attack speed, movement speed, maximum Hitpoints, special-energy gain or weapon reach. Ranks reset each run and are not banked into the persistent profile.
 
 ## Deliberate next steps
-- Add a level-up choice flow with upgrade definitions and a pause/selection state.
 - Replace placeholder geometry with rigged player and monster models, animation trees and audio.
 - Separate Slayer contracts, drop tables, inventory, crafting recipes, profile service and meta unlock catalogue into independent resources/services.
 - Add multiple monsters, weapon styles, projectile/magic delivery, Prayer, gathering nodes, bosses and a full run-results screen.
