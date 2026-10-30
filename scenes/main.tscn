@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/orbit_camera.gd" id="2_camera"]
@@ -7,6 +7,8 @@
 [ext_resource type="Resource" path="res://data/weapons/bronze_sword.tres" id="5_weapon"]
 [ext_resource type="Script" path="res://scripts/waves/wave_manager.gd" id="6_wave"]
 [ext_resource type="Script" path="res://scripts/progression/progression_director.gd" id="7_progression"]
+[ext_resource type="Script" path="res://scripts/progression/run_upgrade_director.gd" id="8_upgrades"]
+[ext_resource type="Script" path="res://scripts/ui/level_up_choice_ui.gd" id="9_upgrade_ui"]
 
 [sub_resource type="Environment" id="Environment_world"]
 background_mode = 1
@@ -116,3 +118,14 @@ camera_path = NodePath("../CameraRig")
 wave_manager_path = NodePath("../WaveManager")
 combat_path = NodePath("../CombatDirector")
 progression_path = NodePath("../ProgressionDirector")
+upgrade_director_path = NodePath("../UpgradeDirector")
+
+[node name="UpgradeDirector" type="Node" parent="."]
+script = ExtResource("8_upgrades")
+progression_path = NodePath("../ProgressionDirector")
+player_path = NodePath("../Player")
+combat_path = NodePath("../CombatDirector")
+
+[node name="LevelUpChoiceUI" type="CanvasLayer" parent="."]
+script = ExtResource("9_upgrade_ui")
+upgrade_director_path = NodePath("../UpgradeDirector")

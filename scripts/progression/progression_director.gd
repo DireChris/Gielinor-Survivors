@@ -102,10 +102,14 @@ func _award_xp(skill: String, amount: float) -> void:
 	run_skill_xp[skill] = float(run_skill_xp[skill]) + amount
 	var new_level := get_skill_level(skill)
 	if new_level > old_level:
-		level_up.emit(skill, new_level)
+		# A large XP award can cross more than one threshold. Emit each level so
+		# the run-upgrade director can queue one deliberate choice per level.
+		for reached_level in range(old_level + 1, new_level + 1):
+			level_up.emit(skill, reached_level)
 		if skill == "Hitpoints" and is_instance_valid(_player):
-			_player.max_health += 2 * (new_level - old_level)
-			_player.restore_health(2 * (new_level - old_level))
+			var health_increase := 2 * (new_level - old_level)
+			_player.max_health += health_increase
+			_player.restore_health(health_increase)
 		if skill == "Attack":
 			weapon_damage_bonus = maxi(0, new_level - 1) / 10
 	progression_changed.emit()

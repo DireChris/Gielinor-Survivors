@@ -51,13 +51,14 @@ Push a version tag such as `v0.3.0` to create a GitHub Release automatically. Th
 - Weapon hits and specials create expanding impact rings; damage numbers appear above enemies.
 - A Slayer contract tracks 15 goblin kills and awards bonus Slayer XP and coins.
 - Attack, Strength, Defence, Hitpoints and Slayer gain run XP from kills. OSRS-style level thresholds are used.
+- Every skill level-up pauses the run and offers up to three choices: Keen Edge (damage), Swift Strikes (attack speed), Fleetfoot (movement), Vitality (maximum Hitpoints and healing), Focused Spirit (special energy) or Long Reach (attack range). Upgrade ranks are run-only and reset on a new run.
 - Goblins can drop coins, copper ore and bones.
 - Crafting the Bronze Edge costs 5 copper ore, 3 bones and 30 coins; it adds weapon damage for the current profile.
 - On player defeat, run skill XP is banked into a versioned local profile at `user://gielinor_survivors_profile.json`. Permanent XP, lifetime kills and the crafted weapon unlock persist between launches.
 
 ## Important prototype limits
 
-This is a systems foundation, not a finished game. The character and goblin are still placeholder geometry; there are no rigged attack animations, ranged weapons, magic autocasts, full equipment/inventory interface, multiple Slayer task types, boss encounters, Prayer system, gathering stations, recipe catalogue, upgrade-choice screen or complete meta-progression tree yet. The first craft is a single starter upgrade, and the current profile stores progression rather than a full run save.
+This is a systems foundation, not a finished game. The character and goblin are still placeholder geometry; there are no rigged attack animations, ranged weapons, magic autocasts, full equipment/inventory interface, multiple Slayer task types, boss encounters, Prayer system, gathering stations, recipe catalogue or complete meta-progression tree yet. The first craft is a single starter upgrade, and the current profile stores progression rather than a full run save.
 
 ## Build locally
 
@@ -77,6 +78,7 @@ res://
 ├── .github/workflows/build.yml
 ├── assets/
 ├── data/weapons/bronze_sword.tres
+├── data/upgrades/
 ├── scenes/
 │   ├── enemies/goblin.tscn
 │   └── main.tscn

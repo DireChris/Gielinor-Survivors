@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RunUpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/progression/run_upgrade_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+upgrade_id = &"vitality"
+display_name = "Vitality"
+description = "+10 maximum Hitpoints and immediately restore 10 Hitpoints."
+effect_type = &"max_health"
+max_rank = 5
+effect_per_rank = 10
