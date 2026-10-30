@@ -1,27 +1,12 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemies/enemy_controller.gd" id="1_enemy"]
 [ext_resource type="Resource" path="res://data/drops/goblin_drop_table.tres" id="2_drop_table"]
-
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
-radius = 0.34
-height = 1.45
+[ext_resource type="Script" path="res://scripts/visuals/character_rig.gd" id="3_character_rig"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape_body"]
 radius = 0.34
 height = 1.45
-
-[sub_resource type="SphereMesh" id="SphereMesh_head"]
-radius = 0.27
-height = 0.54
-
-[sub_resource type="StandardMaterial3D" id="Material_goblin"]
-albedo_color = Color(0.28, 0.48, 0.22, 1)
-roughness = 0.95
-
-[sub_resource type="StandardMaterial3D" id="Material_goblin_head"]
-albedo_color = Color(0.39, 0.59, 0.29, 1)
-roughness = 0.95
 
 [node name="Goblin" type="CharacterBody3D"]
 collision_layer = 1
@@ -30,15 +15,9 @@ script = ExtResource("1_enemy")
 monster_id = &"goblin"
 drop_table = ExtResource("2_drop_table")
 
-[node name="Body" type="MeshInstance3D" parent="."]
-position = Vector3(0, 0.76, 0)
-mesh = SubResource("CapsuleMesh_body")
-material_override = SubResource("Material_goblin")
-
-[node name="Head" type="MeshInstance3D" parent="."]
-position = Vector3(0, 1.53, 0)
-mesh = SubResource("SphereMesh_head")
-material_override = SubResource("Material_goblin_head")
+[node name="VisualRig" type="Node3D" parent="."]
+script = ExtResource("3_character_rig")
+character_kind = "Goblin"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 position = Vector3(0, 0.76, 0)

@@ -52,6 +52,7 @@ func _process(delta: float) -> void:
 		return
 	var attack_direction := _face_target(target, weapon_data.attack_interval)
 	var damage := weapon_data.damage + damage_bonus + run_damage_bonus
+	_player.play_combat_animation(&"attack")
 	_spawn_directional_slash(attack_direction, 1.65, 115.0, false)
 	target.take_damage(damage)
 	_attack_cooldown = weapon_data.attack_interval / maxf(0.25, attack_speed_multiplier)
@@ -116,6 +117,7 @@ func _activate_special() -> void:
 		return
 
 	special_energy -= weapon_data.special_cost
+	_player.play_combat_animation(&"special")
 	var damage := maxi(1, roundi(float(weapon_data.damage + damage_bonus + run_damage_bonus) * weapon_data.special_damage_multiplier))
 	_spawn_directional_slash(special_direction, minf(weapon_data.special_radius, 2.2), weapon_data.special_arc_degrees, true)
 	for enemy in targets:
