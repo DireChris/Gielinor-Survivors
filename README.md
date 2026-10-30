@@ -19,7 +19,7 @@ Every push to `main` and pull request targeting `main` runs the Windows export w
 2. Select the latest successful **Windows Build** run.
 3. Download the `Gielinor-Survivors-Windows` artifact.
 4. Extract the downloaded artifact ZIP.
-5. Keep `Gielinor Survivors.exe` and `Gielinor Survivors.pck` together in the same folder, then run the EXE.
+5. Keep `Gielinor-Survivors.exe` and `Gielinor-Survivors.pck` together in the same folder, then run the EXE.
 
 The PCK contains the game data required by the executable. Both files are included in the artifact and in tagged GitHub Releases. A single-file embedded PCK is deliberately not used because it can increase antivirus false positives for unsigned Windows executables.
 
@@ -54,10 +54,10 @@ Install Godot 4.7.2 and its export templates, then run from the repository root:
 ```powershell
 New-Item -ItemType Directory -Force build
 godot --headless --editor --path . --quit
-godot --headless --path . --export-release "Windows Desktop" "build/Gielinor Survivors.exe"
+godot --headless --path . --export-release "Windows Desktop" "build/Gielinor-Survivors.exe"
 ```
 
-The export creates `Gielinor Survivors.exe` and `Gielinor Survivors.pck` in the build folder.
+The export creates `Gielinor-Survivors.exe` and `Gielinor-Survivors.pck` in the build folder.
 
 ## Project structure
 
