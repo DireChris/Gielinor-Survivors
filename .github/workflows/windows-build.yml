@@ -43,34 +43,39 @@ jobs:
       - name: Import project and validate main scene
         shell: pwsh
         run: |
-          godot --headless --editor --path . --quit
+          godot --headless --editor --path "${{ github.workspace }}" --quit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          godot --headless --path . --quit-after 5
+          godot --headless --path "${{ github.workspace }}" --quit-after 5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Export and package Windows build
+      - name: Export Windows executable
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path build | Out-Null
-          godot --headless --path . --export-release "Windows Desktop" "build/Gielinor-Survivors.exe"
+          $workspace = $env:GITHUB_WORKSPACE
+          $buildDir = Join-Path $workspace "build"
+          New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
+
+          $exe = Join-Path $buildDir "Gielinor-Survivors.exe"
+          $pck = Join-Path $buildDir "Gielinor-Survivors.pck"
+
+          godot --headless --path $workspace --export-release "Windows Desktop" $exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $exe = "build/Gielinor-Survivors.exe"
-          $pck = "build/Gielinor-Survivors.pck"
-          $package = "build/Gielinor-Survivors-Windows.zip"
-          if (!(Test-Path $exe)) { throw "Windows export did not produce the EXE." }
-          if (!(Test-Path $pck)) { throw "Windows export did not produce the matching PCK data file." }
+          if (!(Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Windows export did not produce the EXE at $exe" }
+          if (!(Test-Path -LiteralPath $pck -PathType Leaf)) { throw "Windows export did not produce the PCK at $pck" }
 
-          Compress-Archive -Path $exe, $pck -DestinationPath $package -Force
-          if (!(Test-Path $package)) { throw "Could not create the Windows build ZIP." }
-          Get-ChildItem build | Format-Table Name, Length
+          Write-Host "Build workspace: $workspace"
+          Get-ChildItem -LiteralPath $buildDir | Select-Object Name, Length | Format-Table | Out-String | Write-Host
 
       - name: Upload playable Windows build
         uses: actions/upload-artifact@v7
         with:
-          path: build/Gielinor-Survivors-Windows.zip
-          archive: false
+          name: Gielinor-Survivors-Windows
+          path: |
+            ${{ github.workspace }}/build/Gielinor-Survivors.exe
+            ${{ github.workspace }}/build/Gielinor-Survivors.pck
+          if-no-files-found: error
           retention-days: 30
 
       - name: Publish GitHub Release
@@ -78,4 +83,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: build/Gielinor-Survivors-Windows.zip
+          files: |
+            build/Gielinor-Survivors.exe
+            build/Gielinor-Survivors.pck
