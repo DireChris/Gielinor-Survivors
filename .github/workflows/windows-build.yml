@@ -53,11 +53,11 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path build | Out-Null
-          godot --headless --path . --export-release "Windows Desktop" "build/Gielinor Survivors.exe"
+          godot --headless --path . --export-release "Windows Desktop" "build/Gielinor-Survivors.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $exe = "build/Gielinor Survivors.exe"
-          $pck = "build/Gielinor Survivors.pck"
+          $exe = "build/Gielinor-Survivors.exe"
+          $pck = "build/Gielinor-Survivors.pck"
           if (!(Test-Path $exe)) { throw "Windows export did not produce the EXE." }
           if (!(Test-Path $pck)) { throw "Windows export did not produce the matching PCK data file." }
 
@@ -67,9 +67,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Gielinor-Survivors-Windows
-          path: |
-            build/Gielinor Survivors.exe
-            build/Gielinor Survivors.pck
+          path: build/
           if-no-files-found: error
           retention-days: 30
 
@@ -79,5 +77,5 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            build/Gielinor Survivors.exe
-            build/Gielinor Survivors.pck
+            build/Gielinor-Survivors.exe
+            build/Gielinor-Survivors.pck
