@@ -59,7 +59,7 @@ Push a version tag such as `v0.3.0` to create a GitHub Release automatically. Th
 
 ## Important prototype limits
 
-This is a systems foundation, not a finished game. The current characters are procedural articulated low-poly rigs rather than imported, skinned OSRS-style models; custom model assets, ranged weapons, magic autocasts, full equipment/inventory interface, multiple Slayer task types, boss encounters, Prayer system, gathering stations, recipe catalogue and complete meta-progression tree are still future work. The first craft is a single starter upgrade, and the current profile stores progression rather than a full run save.
+This is a systems foundation, not a finished game. The current characters are procedural articulated low-poly rigs rather than imported, skinned OSRS-style models; the rigs use AnimationPlayer states rather than final AnimationTrees; custom model assets, ranged weapons, magic autocasts, full equipment/inventory interface, multiple Slayer task types, boss encounters, Prayer system, gathering stations, recipe catalogue and complete meta-progression tree are still future work. The first craft is a single starter upgrade, and the current profile stores progression rather than a full run save.
 
 ## Build locally
 
@@ -89,7 +89,8 @@ res://
     ├── combat/
     ├── enemies/
     ├── player/
-    ├── progression/progression_director.gd
+    ├── progression/
+    ├── visuals/character_rig.gd
     ├── ui/
     └── waves/
 ```
