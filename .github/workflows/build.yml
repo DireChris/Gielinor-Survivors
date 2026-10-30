@@ -46,13 +46,17 @@ jobs:
           $godotExePath = $godotExecutable.FullName
           Write-Host "Using Godot executable: $godotExePath"
 
-          $godotVersion = & $godotExePath --version
-          $versionExitCode = $LASTEXITCODE
-          if ($versionExitCode -ne 0) {
-            throw "Godot version check failed with exit code $versionExitCode."
+          $versionStdout = Join-Path $env:RUNNER_TEMP "godot-version.stdout.log"
+          $versionStderr = Join-Path $env:RUNNER_TEMP "godot-version.stderr.log"
+          $versionProcess = Start-Process -FilePath $godotExePath -ArgumentList "--version" -WorkingDirectory $env:GITHUB_WORKSPACE -Wait -PassThru -NoNewWindow -RedirectStandardOutput $versionStdout -RedirectStandardError $versionStderr
+          if ($versionProcess.ExitCode -ne 0) {
+            throw "Godot version check failed with exit code $($versionProcess.ExitCode)."
           }
 
-          $godotVersionText = ($godotVersion | Out-String).Trim()
+          $versionParts = @()
+          if (Test-Path -LiteralPath $versionStdout) { $versionParts += Get-Content -LiteralPath $versionStdout }
+          if (Test-Path -LiteralPath $versionStderr) { $versionParts += Get-Content -LiteralPath $versionStderr }
+          $godotVersionText = ($versionParts -join " ").Trim()
           Write-Host "Godot version: $godotVersionText"
           if ($godotVersionText -notmatch "^4[.]7[.]2") {
             throw "Expected Godot 4.7.2 stable but found $godotVersionText."
@@ -63,18 +67,24 @@ jobs:
       - name: Import project and validate main scene
         shell: pwsh
         run: |
+          $importStdout = Join-Path $env:RUNNER_TEMP "godot-import.stdout.log"
+          $importStderr = Join-Path $env:RUNNER_TEMP "godot-import.stderr.log"
           Write-Host "Importing Godot project..."
-          & $env:GS_GODOT_EXE --headless --editor --path . --quit
-          $importExitCode = $LASTEXITCODE
-          if ($importExitCode -ne 0) {
-            throw "Godot project import failed with exit code $importExitCode."
+          $importProcess = Start-Process -FilePath $env:GS_GODOT_EXE -ArgumentList "--headless --editor --path . --quit" -WorkingDirectory $env:GITHUB_WORKSPACE -Wait -PassThru -NoNewWindow -RedirectStandardOutput $importStdout -RedirectStandardError $importStderr
+          if (Test-Path -LiteralPath $importStdout) { Get-Content -LiteralPath $importStdout | ForEach-Object { Write-Host $_ } }
+          if (Test-Path -LiteralPath $importStderr) { Get-Content -LiteralPath $importStderr | ForEach-Object { Write-Host $_ } }
+          if ($importProcess.ExitCode -ne 0) {
+            throw "Godot project import failed with exit code $($importProcess.ExitCode)."
           }
 
+          $sceneStdout = Join-Path $env:RUNNER_TEMP "godot-scene.stdout.log"
+          $sceneStderr = Join-Path $env:RUNNER_TEMP "godot-scene.stderr.log"
           Write-Host "Launching main scene headlessly..."
-          & $env:GS_GODOT_EXE --headless --path . --quit-after 5
-          $sceneExitCode = $LASTEXITCODE
-          if ($sceneExitCode -ne 0) {
-            throw "The main scene failed to launch headlessly (exit code $sceneExitCode)."
+          $sceneProcess = Start-Process -FilePath $env:GS_GODOT_EXE -ArgumentList "--headless --path . --quit-after 5" -WorkingDirectory $env:GITHUB_WORKSPACE -Wait -PassThru -NoNewWindow -RedirectStandardOutput $sceneStdout -RedirectStandardError $sceneStderr
+          if (Test-Path -LiteralPath $sceneStdout) { Get-Content -LiteralPath $sceneStdout | ForEach-Object { Write-Host $_ } }
+          if (Test-Path -LiteralPath $sceneStderr) { Get-Content -LiteralPath $sceneStderr | ForEach-Object { Write-Host $_ } }
+          if ($sceneProcess.ExitCode -ne 0) {
+            throw "The main scene failed to launch headlessly (exit code $($sceneProcess.ExitCode))."
           }
 
       - name: Export and package Windows build
@@ -93,11 +103,14 @@ jobs:
           }
           New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
+          $exportStdout = Join-Path $env:RUNNER_TEMP "godot-export.stdout.log"
+          $exportStderr = Join-Path $env:RUNNER_TEMP "godot-export.stderr.log"
           Write-Host 'Export command: Godot --headless --path . --export-release "Windows Desktop" build/gielinor-survivors.exe'
-          & $env:GS_GODOT_EXE --headless --verbose --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"
-          $exportExitCode = $LASTEXITCODE
-          if ($exportExitCode -ne 0) {
-            throw "Godot Windows export failed with exit code $exportExitCode."
+          $exportProcess = Start-Process -FilePath $env:GS_GODOT_EXE -ArgumentList '--headless --verbose --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"' -WorkingDirectory $env:GITHUB_WORKSPACE -Wait -PassThru -NoNewWindow -RedirectStandardOutput $exportStdout -RedirectStandardError $exportStderr
+          if (Test-Path -LiteralPath $exportStdout) { Get-Content -LiteralPath $exportStdout | ForEach-Object { Write-Host $_ } }
+          if (Test-Path -LiteralPath $exportStderr) { Get-Content -LiteralPath $exportStderr | ForEach-Object { Write-Host $_ } }
+          if ($exportProcess.ExitCode -ne 0) {
+            throw "Godot Windows export failed with exit code $($exportProcess.ExitCode)."
           }
 
           Write-Host "Build directory contents after export:"
