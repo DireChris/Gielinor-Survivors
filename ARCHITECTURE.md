@@ -61,11 +61,11 @@ The profile writer writes a temporary file and then renames it into place. If a 
 - Drops: goblins can drop coins, copper ore and bones.
 - Crafting: one Bronze Edge recipe consumes 5 ore, 3 bones and 30 coins, then grants a weapon damage bonus.
 - Meta: permanent skill XP, lifetime kills and the crafted unlock are stored between launches.
-- Combat feedback: directional crescent slashes for regular attacks and a configurable forward-facing Whirlwind sweep; damage numbers remain separate world-space feedback.
+- Combat feedback: directional crescent slashes for regular attacks and a configurable forward-facing Whirlwind sweep; player and goblin rigs respond with matching AnimationPlayer actions. Damage numbers remain separate world-space feedback.
 - Level-up choices: each skill level gained offers one of up to three upgrades. Choices pause the world; selecting one resumes the run. Upgrades improve damage, attack speed, movement speed, maximum Hitpoints, special-energy gain or weapon reach. Ranks reset each run and are not banked into the persistent profile.
 
 ## Deliberate next steps
-- Replace placeholder geometry with rigged player and monster models, animation trees and audio.
+- Replace the procedural articulated rigs with authored, skinned character assets and AnimationTrees when licensed model assets are selected; add combat and ambient audio.
 - Move crafting recipes, persistent profile operations and meta unlocks into dedicated resources/services.
 - Add multiple monsters, weapon styles, projectile/magic delivery, Prayer, gathering nodes, bosses and a full run-results screen.
 - Add automated gameplay tests for kill rewards, duplicate death prevention, recipe validation and profile migration.

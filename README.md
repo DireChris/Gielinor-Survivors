@@ -9,7 +9,7 @@ A 3D wave-survival rogue-lite inspired by the atmosphere, monsters, equipment an
 - **Godot 4.7.2 stable**
 - GDScript (no .NET runtime required)
 - GL Compatibility renderer
-- Procedural low-poly placeholder geometry; no external assets required
+- Procedural articulated low-poly character rigs with AnimationPlayer states; no external assets required
 
 ## Get a playable Windows build
 
@@ -46,7 +46,7 @@ Push a version tag such as `v0.3.0` to create a GitHub Release automatically. Th
 
 ## Current playable systems
 
-- Goblins spawn in escalating waves and pursue the player.
+- Goblins spawn in escalating waves and pursue the player. Both player and goblin use articulated low-poly rigs with idle, run, attack and death animations; the player also has a special-attack animation.
 - The Bronze Sword automatically attacks nearby enemies; Q triggers Whirlwind when enough special energy is available.
 - Automatic attacks face the selected target and emit a directional slash; Q Whirlwind performs a forward-facing 150-degree sweep. Damage numbers appear above enemies.
 - The Goblin Clearance Slayer contract is defined as a data resource and tracks 15 goblin kills, awarding bonus Slayer XP and coins.
@@ -59,7 +59,7 @@ Push a version tag such as `v0.3.0` to create a GitHub Release automatically. Th
 
 ## Important prototype limits
 
-This is a systems foundation, not a finished game. The character and goblin are still placeholder geometry; there are no rigged attack animations, ranged weapons, magic autocasts, full equipment/inventory interface, multiple Slayer task types, boss encounters, Prayer system, gathering stations, recipe catalogue or complete meta-progression tree yet. The first craft is a single starter upgrade, and the current profile stores progression rather than a full run save.
+This is a systems foundation, not a finished game. The current characters are procedural articulated low-poly rigs rather than imported, skinned OSRS-style models; the rigs use AnimationPlayer states rather than final AnimationTrees; custom model assets, ranged weapons, magic autocasts, full equipment/inventory interface, multiple Slayer task types, boss encounters, Prayer system, gathering stations, recipe catalogue and complete meta-progression tree are still future work. The first craft is a single starter upgrade, and the current profile stores progression rather than a full run save.
 
 ## Build locally
 
@@ -77,7 +77,7 @@ Compress-Archive -Path "build/*" -DestinationPath "gielinor-survivors-windows.zi
 ```text
 res://
 ├── .github/workflows/build.yml
-├── assets/
+├── assets/ (currently reserved for future licensed models, materials and audio)
 ├── data/weapons/bronze_sword.tres
 ├── data/upgrades/
 ├── data/drops/goblin_drop_table.tres
@@ -89,7 +89,8 @@ res://
     ├── combat/
     ├── enemies/
     ├── player/
-    ├── progression/progression_director.gd
+    ├── progression/
+    ├── visuals/character_rig.gd
     ├── ui/
     └── waves/
 ```

@@ -113,6 +113,12 @@ func face_direction(direction: Vector3, lock_duration: float = 0.35) -> void:
 	_combat_facing_lock_remaining = maxf(_combat_facing_lock_remaining, lock_duration)
 
 
+func play_combat_animation(animation_name: StringName) -> void:
+	var rig := get_node_or_null("VisualRig")
+	if rig != null and rig.has_method("play_action"):
+		rig.call("play_action", animation_name)
+
+
 func take_damage(amount: int) -> void:
 	if is_dead or amount <= 0:
 		return
@@ -123,6 +129,7 @@ func take_damage(amount: int) -> void:
 	if current_health <= 0:
 		is_dead = true
 		velocity = Vector3.ZERO
+		play_combat_animation(&"death")
 		player_died.emit()
 
 

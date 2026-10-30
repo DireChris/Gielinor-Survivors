@@ -27,6 +27,7 @@ var alive: bool = true
 
 var _target: Node3D
 var _attack_cooldown: float = 0.65
+var _visual_rig: Node
 
 
 func _ready() -> void:
@@ -34,6 +35,7 @@ func _ready() -> void:
 	current_health = max_health
 	move_speed = base_move_speed
 	contact_damage = base_contact_damage
+	_visual_rig = get_node_or_null("VisualRig")
 
 
 func initialize(target: Node3D, wave_number: int) -> void:
@@ -74,6 +76,8 @@ func _physics_process(delta: float) -> void:
 		_attack_cooldown -= delta
 		if _attack_cooldown <= 0.0:
 			if is_instance_valid(_target) and _target.has_method("take_damage"):
+				if is_instance_valid(_visual_rig) and _visual_rig.has_method("play_action"):
+					_visual_rig.call("play_action", &"attack")
 				_target.take_damage(contact_damage)
 			_attack_cooldown = attack_interval
 
@@ -99,8 +103,11 @@ func take_damage(amount: int) -> void:
 		collision_layer = 0
 		collision_mask = 0
 		set_physics_process(false)
+		if is_instance_valid(_visual_rig) and _visual_rig.has_method("play_action"):
+			_visual_rig.call("play_action", &"death")
 		died.emit(self)
-		queue_free()
+		# Keep the defeated mesh visible briefly so its death animation can play.
+		get_tree().create_timer(0.78).timeout.connect(queue_free)
 
 
 func _spawn_damage_number(amount: int) -> void:
