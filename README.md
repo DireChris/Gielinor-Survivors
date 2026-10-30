@@ -18,10 +18,10 @@ Every push to `main` and pull request targeting `main` runs the Windows export w
 1. Open the repository's **Actions** tab.
 2. Select the latest successful **Windows Build** run.
 3. Download the `gielinor-survivors-windows` artifact.
-4. Extract the downloaded GitHub artifact ZIP, then extract `gielinor-survivors-windows.zip`.
-5. Run `gielinor-survivors.exe`. Keep the matching `gielinor-survivors.pck` beside it.
+4. Extract the downloaded artifact ZIP once. It contains only `gielinor-survivors.exe` and its matching `gielinor-survivors.pck` at the top level.
+5. Run `gielinor-survivors.exe`; keep the PCK in the same folder.
 
-The workflow validates the Godot project headlessly, exports the Windows Desktop preset, verifies both exported files, creates a ZIP from the build folder and checks that the ZIP contains the EXE and PCK before uploading it.
+The workflow checks project-import and main-scene logs for script/resource errors, exports the Windows Desktop preset, verifies the EXE and PCK, and creates a clean release ZIP with those two files at its root. The Actions artifact uploads the files directly, avoiding a ZIP nested inside GitHub's artifact ZIP.
 
 Push a version tag such as `v0.3.0` to create a GitHub Release automatically. The release attaches `gielinor-survivors-windows.zip` directly.
 

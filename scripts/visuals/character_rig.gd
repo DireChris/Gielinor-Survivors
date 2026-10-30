@@ -107,10 +107,11 @@ func _build_character() -> void:
 	_add_mesh(head_pivot, "RightEye", eye_mesh, eye_color, Vector3(0.105, 0.07, -0.225))
 
 	if goblin:
-		var ear_mesh := ConeMesh.new()
-		ear_mesh.bottom_radius = 0.10
+		var ear_mesh := CylinderMesh.new()
 		ear_mesh.top_radius = 0.0
+		ear_mesh.bottom_radius = 0.10
 		ear_mesh.height = 0.42
+		ear_mesh.radial_segments = 6
 		_add_mesh(head_pivot, "LeftEar", ear_mesh, skin_color, Vector3(-0.30, 0.10, 0.0), Vector3(0.0, 0.0, deg_to_rad(62.0)))
 		_add_mesh(head_pivot, "RightEar", ear_mesh, skin_color, Vector3(0.30, 0.10, 0.0), Vector3(0.0, 0.0, deg_to_rad(-62.0)))
 	else:
