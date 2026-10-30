@@ -62,19 +62,20 @@ jobs:
           godot --headless --path $workspace --export-release "Windows Desktop" $exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          if (!(Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Windows export did not produce the EXE at $exe" }
-          if (!(Test-Path -LiteralPath $pck -PathType Leaf)) { throw "Windows export did not produce the PCK at $pck" }
+          if (!(Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Windows export did not produce the EXE." }
+          if (!(Test-Path -LiteralPath $pck -PathType Leaf)) { throw "Windows export did not produce the PCK." }
 
-          Write-Host "Build workspace: $workspace"
-          Get-ChildItem -LiteralPath $buildDir | Select-Object Name, Length | Format-Table | Out-String | Write-Host
+          Write-Host "Workspace: $workspace"
+          Write-Host "EXE: $((Get-Item -LiteralPath $exe).FullName) ($((Get-Item -LiteralPath $exe).Length) bytes)"
+          Write-Host "PCK: $((Get-Item -LiteralPath $pck).FullName) ($((Get-Item -LiteralPath $pck).Length) bytes)"
 
       - name: Upload playable Windows build
         uses: actions/upload-artifact@v7
         with:
           name: Gielinor-Survivors-Windows
           path: |
-            ${{ github.workspace }}/build/Gielinor-Survivors.exe
-            ${{ github.workspace }}/build/Gielinor-Survivors.pck
+            build\Gielinor-Survivors.exe
+            build\Gielinor-Survivors.pck
           if-no-files-found: error
           retention-days: 30
 
