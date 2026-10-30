@@ -48,8 +48,9 @@ Push a version tag such as `v0.3.0` to create a GitHub Release automatically. Th
 
 - Goblins spawn in escalating waves and pursue the player.
 - The Bronze Sword automatically attacks nearby enemies; Q triggers Whirlwind when enough special energy is available.
-- Weapon hits and specials create expanding impact rings; damage numbers appear above enemies.
-- A Slayer contract tracks 15 goblin kills and awards bonus Slayer XP and coins.
+- Automatic attacks face the selected target and emit a directional slash; Q Whirlwind performs a forward-facing 150-degree sweep. Damage numbers appear above enemies.
+- The Goblin Clearance Slayer contract is defined as a data resource and tracks 15 goblin kills, awarding bonus Slayer XP and coins.
+- Goblin loot is rolled from a data-driven drop table; an InventoryService handles item counts and atomic crafting costs.
 - Attack, Strength, Defence, Hitpoints and Slayer gain run XP from kills. OSRS-style level thresholds are used.
 - Every skill level-up pauses the run and offers up to three choices: Keen Edge (damage), Swift Strikes (attack speed), Fleetfoot (movement), Vitality (maximum Hitpoints and healing), Focused Spirit (special energy) or Long Reach (attack range). Upgrade ranks are run-only and reset on a new run.
 - Goblins can drop coins, copper ore and bones.
@@ -79,6 +80,8 @@ res://
 ├── assets/
 ├── data/weapons/bronze_sword.tres
 ├── data/upgrades/
+├── data/drops/goblin_drop_table.tres
+├── data/slayer/goblin_clearance.tres
 ├── scenes/
 │   ├── enemies/goblin.tscn
 │   └── main.tscn
@@ -93,7 +96,7 @@ res://
 
 ## Architecture
 
-Gameplay ownership is split between presentation, run systems, persistent profile and data definitions. The progression director currently bridges run XP, Slayer, drops, a starter recipe and profile persistence; future work should split those into dedicated services as their scope grows. See [ARCHITECTURE.md](ARCHITECTURE.md).
+Gameplay ownership is split between presentation, run systems, item storage, Slayer contracts, monster drop data, persistent profile and data definitions. ProgressionDirector coordinates these systems without owning their inventories, drop rolls or contract counters. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Asset and IP note
 

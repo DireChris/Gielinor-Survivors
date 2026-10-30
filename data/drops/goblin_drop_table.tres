@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="DropTableData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/progression/drop_entry_data.gd" id="1_entry"]
+[ext_resource type="Script" path="res://scripts/progression/drop_table_data.gd" id="2_table"]
+
+[sub_resource type="Resource" id="DropEntry_coins"]
+script = ExtResource("1_entry")
+item_id = &"coins"
+drop_chance = 1.0
+minimum_quantity = 2
+maximum_quantity = 8
+
+[sub_resource type="Resource" id="DropEntry_copper_ore"]
+script = ExtResource("1_entry")
+item_id = &"copper_ore"
+drop_chance = 0.45
+minimum_quantity = 1
+maximum_quantity = 1
+
+[sub_resource type="Resource" id="DropEntry_bones"]
+script = ExtResource("1_entry")
+item_id = &"bones"
+drop_chance = 0.35
+minimum_quantity = 1
+maximum_quantity = 1
+
+[resource]
+script = ExtResource("2_table")
+entries = Array[Resource]([SubResource("DropEntry_coins"), SubResource("DropEntry_copper_ore"), SubResource("DropEntry_bones")])

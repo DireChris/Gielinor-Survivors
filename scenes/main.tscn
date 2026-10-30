@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/orbit_camera.gd" id="2_camera"]
@@ -9,6 +9,9 @@
 [ext_resource type="Script" path="res://scripts/progression/progression_director.gd" id="7_progression"]
 [ext_resource type="Script" path="res://scripts/progression/run_upgrade_director.gd" id="8_upgrades"]
 [ext_resource type="Script" path="res://scripts/ui/level_up_choice_ui.gd" id="9_upgrade_ui"]
+[ext_resource type="Script" path="res://scripts/progression/inventory_service.gd" id="10_inventory"]
+[ext_resource type="Script" path="res://scripts/progression/slayer_contract_service.gd" id="11_slayer_service"]
+[ext_resource type="Resource" path="res://data/slayer/goblin_clearance.tres" id="12_goblin_contract"]
 
 [sub_resource type="Environment" id="Environment_world"]
 background_mode = 1
@@ -105,11 +108,20 @@ script = ExtResource("6_wave")
 player_path = NodePath("../Player")
 enemy_container_path = NodePath("../EnemyContainer")
 
+[node name="InventoryService" type="Node" parent="."]
+script = ExtResource("10_inventory")
+
+[node name="SlayerContractService" type="Node" parent="."]
+script = ExtResource("11_slayer_service")
+contract_data = ExtResource("12_goblin_contract")
+
 [node name="ProgressionDirector" type="Node" parent="."]
 script = ExtResource("7_progression")
 player_path = NodePath("../Player")
 enemy_container_path = NodePath("../EnemyContainer")
 combat_path = NodePath("../CombatDirector")
+inventory_service_path = NodePath("../InventoryService")
+slayer_service_path = NodePath("../SlayerContractService")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("3_hud")
