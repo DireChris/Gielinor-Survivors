@@ -1,8 +1,11 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/orbit_camera.gd" id="2_camera"]
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="3_hud"]
+[ext_resource type="Script" path="res://scripts/combat/auto_combat.gd" id="4_combat"]
+[ext_resource type="Resource" path="res://data/weapons/bronze_sword.tres" id="5_weapon"]
+[ext_resource type="Script" path="res://scripts/waves/wave_manager.gd" id="6_wave"]
 
 [sub_resource type="Environment" id="Environment_world"]
 background_mode = 1
@@ -86,7 +89,22 @@ fov = 65.0
 near = 0.05
 far = 250.0
 
+[node name="EnemyContainer" type="Node3D" parent="."]
+
+[node name="CombatDirector" type="Node" parent="."]
+script = ExtResource("4_combat")
+player_path = NodePath("../Player")
+enemy_container_path = NodePath("../EnemyContainer")
+weapon_data = ExtResource("5_weapon")
+
+[node name="WaveManager" type="Node" parent="."]
+script = ExtResource("6_wave")
+player_path = NodePath("../Player")
+enemy_container_path = NodePath("../EnemyContainer")
+
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("3_hud")
 player_path = NodePath("../Player")
 camera_path = NodePath("../CameraRig")
+wave_manager_path = NodePath("../WaveManager")
+combat_path = NodePath("../CombatDirector")

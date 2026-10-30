@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/weapon_data.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+weapon_id = &"bronze_sword"
+display_name = "Bronze Sword"
+attack_style = "Melee"
+damage = 8
+attack_interval = 0.85
+attack_range = 3.4
+target_policy = 0
+special_name = "Whirlwind"
+special_damage_multiplier = 1.75
+special_radius = 5.5
+special_cost = 50.0

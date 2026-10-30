@@ -1,9 +1,12 @@
 extends CharacterBody3D
 class_name PlayerController
 
-## Camera-relative third-person movement for the first playable slice.
-## Input actions are registered in code so the project works immediately
-## without requiring manual Input Map setup in the editor.
+## Camera-relative third-person movement plus the player's run health.
+## Input actions are registered in code so a fresh project works without
+## manual Input Map configuration in the editor.
+
+signal health_changed(current_health: int, maximum_health: int)
+signal player_died
 
 @export_category("Movement")
 @export_range(1.0, 12.0, 0.1) var walk_speed: float = 5.5
@@ -13,8 +16,14 @@ class_name PlayerController
 @export_range(1.0, 60.0, 0.5) var turn_rate: float = 14.0
 @export var gravity_strength: float = 24.0
 
+@export_category("Survival")
+@export_range(1, 500, 1) var max_health: int = 100
+
 @export_category("References")
 @export var camera_path: NodePath
+
+var current_health: int = 100
+var is_dead: bool = false
 
 var _camera: Camera3D
 
@@ -22,11 +31,18 @@ var _camera: Camera3D
 func _ready() -> void:
 	_register_default_inputs()
 	_camera = get_node_or_null(camera_path) as Camera3D
+	current_health = max_health
+	health_changed.emit(current_health, max_health)
+
 	if _camera == null:
 		push_warning("PlayerController: Camera not found. Movement will use world-relative directions.")
 
 
 func _physics_process(delta: float) -> void:
+	if is_dead:
+		velocity = Vector3.ZERO
+		return
+
 	var input_vector := Input.get_vector(
 		"move_left",
 		"move_right",
@@ -53,6 +69,27 @@ func _physics_process(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, target_yaw, minf(turn_rate * delta, 1.0))
 
 	move_and_slide()
+
+
+func take_damage(amount: int) -> void:
+	if is_dead or amount <= 0:
+		return
+
+	current_health = maxi(0, current_health - amount)
+	health_changed.emit(current_health, max_health)
+
+	if current_health <= 0:
+		is_dead = true
+		velocity = Vector3.ZERO
+		player_died.emit()
+
+
+func restore_health(amount: int) -> void:
+	if is_dead or amount <= 0:
+		return
+
+	current_health = mini(max_health, current_health + amount)
+	health_changed.emit(current_health, max_health)
 
 
 func _get_camera_relative_direction(input_vector: Vector2) -> Vector3:

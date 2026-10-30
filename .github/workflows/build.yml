@@ -37,53 +37,62 @@ jobs:
       - name: Import project and validate main scene
         shell: pwsh
         run: |
+          Write-Host "Importing Godot project..."
           godot --headless --editor --path . --quit
-          if (-not $?) {
-            throw "Godot project import failed."
+          $importExitCode = $LASTEXITCODE
+          if ($importExitCode -ne 0) {
+            throw "Godot project import failed with exit code $importExitCode."
           }
 
+          Write-Host "Launching main scene headlessly..."
           godot --headless --path . --quit-after 5
-          if (-not $?) {
-            throw "The main scene failed to launch headlessly."
+          $sceneExitCode = $LASTEXITCODE
+          if ($sceneExitCode -ne 0) {
+            throw "The main scene failed to launch headlessly (exit code $sceneExitCode)."
           }
 
       - name: Export and package Windows build
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $workspace = $env:GITHUB_WORKSPACE
-          $buildDir = Join-Path $workspace "build"
+          Set-Location $env:GITHUB_WORKSPACE
+
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE "build"
           $exe = Join-Path $buildDir "gielinor-survivors.exe"
           $pck = Join-Path $buildDir "gielinor-survivors.pck"
-          $package = Join-Path $workspace "gielinor-survivors-windows.zip"
+          $package = Join-Path $env:GITHUB_WORKSPACE "gielinor-survivors-windows.zip"
 
           if (Test-Path -LiteralPath $buildDir) {
             Remove-Item -LiteralPath $buildDir -Recurse -Force
           }
           New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
-          Write-Host "Exporting Windows Desktop build..."
-          godot --headless --path $workspace --export-release "Windows Desktop" $exe
-          if (-not $?) {
-            throw "Godot Windows export failed."
+          Write-Host "Using Godot installed by setup-godot (4.7.2 stable)."
+          Write-Host "Export command: godot --headless --path . --export-release `"Windows Desktop`" build/gielinor-survivors.exe"
+          godot --headless --verbose --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"
+          $exportExitCode = $LASTEXITCODE
+          if ($exportExitCode -ne 0) {
+            throw "Godot Windows export failed with exit code $exportExitCode."
           }
 
+          Write-Host "Build directory contents after export:"
+          Get-ChildItem -LiteralPath $buildDir -Force | Select-Object Name, Length | Format-Table | Out-String | Write-Host
+
           if (!(Test-Path -LiteralPath $exe -PathType Leaf)) {
-            throw "Exported executable not found: $exe"
+            throw "Exported executable not found at $exe. Check export_presets.cfg export_path."
           }
           if (!(Test-Path -LiteralPath $pck -PathType Leaf)) {
-            throw "Exported game data not found: $pck"
+            throw "Exported game data not found at $pck."
           }
 
           if (Test-Path -LiteralPath $package) {
             Remove-Item -LiteralPath $package -Force
           }
 
-          Write-Host "Packaging executable and game data..."
-          Compress-Archive -LiteralPath @($exe, $pck) -DestinationPath $package -CompressionLevel Optimal -Force
-
+          Write-Host "Creating gielinor-survivors-windows.zip from the build folder..."
+          Compress-Archive -Path (Join-Path $buildDir "*") -DestinationPath $package -CompressionLevel Optimal -Force
           if (!(Test-Path -LiteralPath $package -PathType Leaf)) {
-            throw "Windows package ZIP was not created: $package"
+            throw "Windows package ZIP was not created at $package."
           }
 
           $verifyDir = Join-Path $env:RUNNER_TEMP "gielinor-survivors-package-check"
@@ -99,11 +108,8 @@ jobs:
             }
           }
 
-          Write-Host "Exported files:"
-          Get-Item -LiteralPath $exe, $pck | Select-Object Name, Length | Format-Table | Out-String | Write-Host
-          Write-Host "Package:"
+          Write-Host "Verified package:"
           Get-Item -LiteralPath $package | Select-Object Name, Length | Format-Table | Out-String | Write-Host
-          Write-Host "SHA256:"
           Get-FileHash -LiteralPath $package -Algorithm SHA256 | Format-Table | Out-String | Write-Host
 
       - name: Upload Windows build artifact

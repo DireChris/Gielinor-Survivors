@@ -151,3 +151,27 @@ Saving should be atomic: write a temporary file, validate it, then replace the p
 - Permanent XP calculation is deterministic and inspectable.
 - Save/load survives restarts and schema migration.
 - UI is a presentation layer over run/profile state, not the source of truth.
+
+
+## Phase 2 implementation — first combat loop
+
+The current playable slice adds the first version of the run systems while preserving the Phase 1 controller and orbit camera.
+
+- `WeaponData` is a Resource asset. The Bronze Sword definition supplies attack style, damage, cadence, range, target policy and special-attack tuning.
+- `AutoCombat` owns attack cadence, target selection, special energy and the Q special input. It subscribes to enemy death signals to award special energy.
+- `EnemyController` provides reusable chasing, contact attacks, wave-scaled Hitpoints and a single authoritative death signal.
+- `WaveManager` owns the preparation, spawning, clearing, intermission and defeated states. It limits simultaneously active enemies and scales goblin health, speed and damage by wave.
+- `PlayerController` owns player Hitpoints and emits one death transition. The HUD reads state from these gameplay systems and does not own it.
+- The Goblin scene is a low-poly placeholder and should be replaced by a rigged monster scene without changing the wave or combat APIs.
+
+### Combat event flow
+
+1. AutoCombat selects an eligible enemy within the weapon range using the configured target policy.
+2. WeaponData supplies the damage and cadence; EnemyController receives one damage call.
+3. EnemyController creates a floating damage number and, at zero Hitpoints, emits one death signal before freeing itself.
+4. WaveManager reduces its active count. AutoCombat awards special energy. Both listen to the same authoritative death event.
+5. At 50 special energy, Q activates the Bronze Sword's Whirlwind and damages eligible enemies within its area radius.
+
+### Current prototype limits
+
+The current Bronze Sword is a melee-only starter weapon. There are no ranged projectiles, magic autocasts, equipment inventory, Slayer contracts, XP drops, boss phases or persistent run profile yet. Those remain the next additions rather than being represented by non-functional UI placeholders.
