@@ -17,13 +17,13 @@ Every push to `main` and pull request targeting `main` runs the Windows export w
 
 1. Open the repository's **Actions** tab.
 2. Select the latest successful **Windows Build** run.
-3. Download the `Gielinor-Survivors-Windows` artifact.
-4. Extract the downloaded artifact ZIP.
-5. Keep `Gielinor-Survivors.exe` and `Gielinor-Survivors.pck` together in the same folder, then run the EXE.
+3. Download the `Gielinor-Survivors-Windows.zip` artifact.
+4. Extract the ZIP.
+5. Run `Gielinor-Survivors.exe`. Keep the matching `Gielinor-Survivors.pck` beside it.
 
-The PCK contains the game data required by the executable. Both files are included in the artifact and in tagged GitHub Releases. A single-file embedded PCK is deliberately not used because it can increase antivirus false positives for unsigned Windows executables.
+The PCK contains the game data required by the executable. Both files are packaged together in the artifact and in tagged GitHub Releases. A single-file embedded PCK is deliberately not used because it can increase antivirus false positives for unsigned Windows executables.
 
-Push a version tag such as `v0.1.0` to create a GitHub Release automatically. The release will include the Windows EXE and its matching PCK.
+Push a version tag such as `v0.1.0` to create a GitHub Release automatically. The release will include a ZIP containing the Windows EXE and its matching PCK.
 
 ## Open the project in Godot
 
