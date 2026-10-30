@@ -37,21 +37,22 @@ jobs:
       - name: Verify Godot version
         shell: pwsh
         run: |
-          godot --version
-          if ($LASTEXITCODE -ne 0) {
-            throw "Godot could not be executed."
+          $godotVersion = (godot --version 2>&1 | Out-String).Trim()
+          Write-Host "Godot version: $godotVersion"
+          if ($godotVersion -notmatch "4\.7\.2") {
+            throw "Expected Godot 4.7.2 stable but found: $godotVersion"
           }
 
       - name: Import project and validate main scene
         shell: pwsh
         run: |
           godot --headless --editor --path . --quit
-          if ($LASTEXITCODE -ne 0) {
+          if (-not $?) {
             throw "Godot project import failed."
           }
 
           godot --headless --path . --quit-after 5
-          if ($LASTEXITCODE -ne 0) {
+          if (-not $?) {
             throw "The main scene failed to launch headlessly."
           }
 
@@ -74,8 +75,8 @@ jobs:
           try {
             Write-Host "Exporting Windows Desktop build..."
             godot --headless --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"
-            if ($LASTEXITCODE -ne 0) {
-              throw "Godot Windows export failed with exit code $LASTEXITCODE."
+            if (-not $?) {
+              throw "Godot Windows export failed."
             }
           }
           finally {
