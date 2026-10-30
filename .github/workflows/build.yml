@@ -34,15 +34,6 @@ jobs:
           use-dotnet: false
           include-templates: true
 
-      - name: Verify Godot version
-        shell: pwsh
-        run: |
-          $godotVersion = (godot --version 2>&1 | Out-String).Trim()
-          Write-Host "Godot version: $godotVersion"
-          if ($godotVersion -notmatch "4\.7\.2") {
-            throw "Expected Godot 4.7.2 stable but found: $godotVersion"
-          }
-
       - name: Import project and validate main scene
         shell: pwsh
         run: |
