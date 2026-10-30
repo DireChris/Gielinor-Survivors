@@ -17,13 +17,14 @@ Every push to `main` and pull request targeting `main` runs the Windows export w
 
 1. Open the repository's **Actions** tab.
 2. Select the latest successful **Windows Build** run.
-3. Download the `Gielinor-Survivors-Windows` artifact.
-4. Extract the downloaded artifact ZIP.
-5. Run `Gielinor-Survivors.exe`. Keep the matching `Gielinor-Survivors.pck` beside it.
+3. Download the `gielinor-survivors-windows` artifact.
+4. Extract the downloaded GitHub artifact ZIP.
+5. Inside it, extract `gielinor-survivors-windows.zip`.
+6. Run `gielinor-survivors.exe`. Keep the matching `gielinor-survivors.pck` beside it.
 
-The PCK contains the game data required by the executable. Both files are included together in the artifact and in tagged GitHub Releases. A single-file embedded PCK is deliberately not used because it can increase antivirus false positives for unsigned Windows executables.
+The inner ZIP contains the Windows executable and its matching PCK game-data file. Tagged GitHub Releases attach this inner ZIP directly, so release downloads need only one extraction.
 
-Push a version tag such as `v0.1.0` to create a GitHub Release automatically. The release will include the Windows EXE and its matching PCK as separate assets.
+Push a version tag such as `v0.1.0` to create a GitHub Release automatically.
 
 ## Open the project in Godot
 
@@ -54,17 +55,21 @@ Install Godot 4.7.2 and its export templates, then run from the repository root:
 ```powershell
 New-Item -ItemType Directory -Force build
 godot --headless --editor --path . --quit
-godot --headless --path . --export-release "Windows Desktop" "build/Gielinor-Survivors.exe"
+godot --headless --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"
 ```
 
-The export creates `Gielinor-Survivors.exe` and `Gielinor-Survivors.pck` in the build folder.
+The export creates `build/gielinor-survivors.exe` and `build/gielinor-survivors.pck`. To create the distributable package manually:
+
+```powershell
+Compress-Archive -LiteralPath "build/gielinor-survivors.exe","build/gielinor-survivors.pck" -DestinationPath "gielinor-survivors-windows.zip" -CompressionLevel Optimal -Force
+```
 
 ## Project structure
 
 ```text
 res://
 ├── .github/workflows/
-│   └── windows-build.yml
+│   └── build.yml
 ├── assets/
 │   ├── audio/
 │   ├── materials/

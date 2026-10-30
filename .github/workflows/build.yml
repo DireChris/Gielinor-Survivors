@@ -1,0 +1,136 @@
+name: Windows Build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Export Windows x86_64
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.7.2 stable and export templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+
+      - name: Verify Godot version
+        shell: pwsh
+        run: |
+          godot --version
+          if ($LASTEXITCODE -ne 0) {
+            throw "Godot could not be executed."
+          }
+
+      - name: Import project and validate main scene
+        shell: pwsh
+        run: |
+          godot --headless --editor --path . --quit
+          if ($LASTEXITCODE -ne 0) {
+            throw "Godot project import failed."
+          }
+
+          godot --headless --path . --quit-after 5
+          if ($LASTEXITCODE -ne 0) {
+            throw "The main scene failed to launch headlessly."
+          }
+
+      - name: Export and package Windows build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $workspace = $env:GITHUB_WORKSPACE
+          $buildDir = Join-Path $workspace "build"
+          $exe = Join-Path $buildDir "gielinor-survivors.exe"
+          $pck = Join-Path $buildDir "gielinor-survivors.pck"
+          $package = Join-Path $workspace "gielinor-survivors-windows.zip"
+
+          if (Test-Path -LiteralPath $buildDir) {
+            Remove-Item -LiteralPath $buildDir -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
+
+          Push-Location $workspace
+          try {
+            Write-Host "Exporting Windows Desktop build..."
+            godot --headless --path . --export-release "Windows Desktop" "build/gielinor-survivors.exe"
+            if ($LASTEXITCODE -ne 0) {
+              throw "Godot Windows export failed with exit code $LASTEXITCODE."
+            }
+          }
+          finally {
+            Pop-Location
+          }
+
+          if (!(Test-Path -LiteralPath $exe -PathType Leaf)) {
+            throw "Exported executable not found: $exe"
+          }
+          if (!(Test-Path -LiteralPath $pck -PathType Leaf)) {
+            throw "Exported game data not found: $pck"
+          }
+
+          if (Test-Path -LiteralPath $package) {
+            Remove-Item -LiteralPath $package -Force
+          }
+
+          Write-Host "Packaging executable and game data..."
+          Compress-Archive -LiteralPath @($exe, $pck) -DestinationPath $package -CompressionLevel Optimal -Force
+
+          if (!(Test-Path -LiteralPath $package -PathType Leaf)) {
+            throw "Windows package ZIP was not created: $package"
+          }
+
+          $verifyDir = Join-Path $env:RUNNER_TEMP "gielinor-survivors-package-check"
+          if (Test-Path -LiteralPath $verifyDir) {
+            Remove-Item -LiteralPath $verifyDir -Recurse -Force
+          }
+          Expand-Archive -LiteralPath $package -DestinationPath $verifyDir -Force
+
+          foreach ($fileName in @("gielinor-survivors.exe", "gielinor-survivors.pck")) {
+            $verifiedFile = Join-Path $verifyDir $fileName
+            if (!(Test-Path -LiteralPath $verifiedFile -PathType Leaf)) {
+              throw "Package validation failed; missing $fileName."
+            }
+          }
+
+          Write-Host "Exported files:"
+          Get-Item -LiteralPath $exe, $pck | Select-Object Name, Length | Format-Table | Out-String | Write-Host
+          Write-Host "Package:"
+          Get-Item -LiteralPath $package | Select-Object Name, Length | Format-Table | Out-String | Write-Host
+          Write-Host "SHA256:"
+          Get-FileHash -LiteralPath $package -Algorithm SHA256 | Format-Table | Out-String | Write-Host
+
+      - name: Upload Windows build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gielinor-survivors-windows
+          path: gielinor-survivors-windows.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: gielinor-survivors-windows.zip
